@@ -129,9 +129,20 @@
               style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
           </div>
           <div style='display: flex; flex-direction: column; gap: 8px;'>
+            <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other URL</label>
+            <input name='profile_url' type='url' placeholder='e.g., https://linkedin.com/in/yourname'
+              style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
+          </div>
+          <div style='display: flex; flex-direction: column; gap: 8px;'>
             <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>Spouse Profession and Services Offered for
               Community</label>
             <input name='spouse_profession' placeholder='e.g., Software Engineer, Play Guitar, Photography'
+              style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
+          </div>
+          <div style='display: flex; flex-direction: column; gap: 8px;'>
+            <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other URL
+              (Spouse)</label>
+            <input name='spouse_profile_url' type='url' placeholder='e.g., https://linkedin.com/in/spousename'
               style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
           </div>
           <div style='display: flex; flex-direction: column; gap: 8px;'>
@@ -268,7 +279,9 @@
         phone: formData.get('phone'),
         spousePhone: formData.get('spouse_phone'),
         profession: formData.get('profession'),
+        profileUrl: formData.get('profile_url'),
         spouseProfession: formData.get('spouse_profession'),
+        spouseProfileUrl: formData.get('spouse_profile_url'),
         privacyLevel: formData.get('privacy'),
         submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
         status: 'pending'

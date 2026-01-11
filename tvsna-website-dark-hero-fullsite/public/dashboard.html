@@ -87,6 +87,12 @@
                     <div style='background: #07111b; padding: 20px; border-radius: 8px; border: 1px solid #143244;'>
                         <div
                             style='font-size: 13px; color: #98b3c2; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;'>
+                            LinkedIn/Business/Other URL</div>
+                        <div style='font-size: 16px; color: #cfe6f1; font-weight: 500;' id='detail-profile-url'>—</div>
+                    </div>
+                    <div style='background: #07111b; padding: 20px; border-radius: 8px; border: 1px solid #143244;'>
+                        <div
+                            style='font-size: 13px; color: #98b3c2; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;'>
                             Native Place (Self)</div>
                         <div style='font-size: 16px; color: #cfe6f1; font-weight: 500;' id='detail-origin-self'>—</div>
                     </div>
@@ -119,8 +125,15 @@
                     <div style='background: #07111b; padding: 20px; border-radius: 8px; border: 1px solid #143244;'>
                         <div
                             style='font-size: 13px; color: #98b3c2; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;'>
-                            Spouse Profession</div>
+                            Spouse Profession and Services</div>
                         <div style='font-size: 16px; color: #cfe6f1; font-weight: 500;' id='detail-spouse-profession'>—
+                        </div>
+                    </div>
+                    <div style='background: #07111b; padding: 20px; border-radius: 8px; border: 1px solid #143244;'>
+                        <div
+                            style='font-size: 13px; color: #98b3c2; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;'>
+                            LinkedIn/Business/Other URL (Spouse)</div>
+                        <div style='font-size: 16px; color: #cfe6f1; font-weight: 500;' id='detail-spouse-profile-url'>—
                         </div>
                     </div>
                     <div style='background: #07111b; padding: 20px; border-radius: 8px; border: 1px solid #143244;'>
@@ -239,9 +252,21 @@
                             style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
                     </div>
                     <div style='display: flex; flex-direction: column; gap: 8px;'>
+                        <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other
+                            URL</label>
+                        <input id='edit-profile-url' name='profile_url' type='url'
+                            style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
+                    </div>
+                    <div style='display: flex; flex-direction: column; gap: 8px;'>
                         <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>Spouse Profession and Services
                             Offered for Community</label>
                         <input id='edit-spouse-profession' name='spouse_profession'
+                            style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
+                    </div>
+                    <div style='display: flex; flex-direction: column; gap: 8px;'>
+                        <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other URL
+                            (Spouse)</label>
+                        <input id='edit-spouse-profile-url' name='spouse_profile_url' type='url'
                             style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
                     </div>
                     <div
@@ -333,6 +358,9 @@
                             <th
                                 style='color: #a9c3d2; padding: 12px 8px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;'>
                                 Profession</th>
+                            <th
+                                style='color: #a9c3d2; padding: 12px 8px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;'>
+                                LinkedIn/Business</th>
                             <th
                                 style='color: #a9c3d2; padding: 12px 8px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;'>
                                 Contact</th>
@@ -459,11 +487,29 @@
                     document.getElementById('detail-email').textContent = data.email || '—';
                     document.getElementById('detail-phone').textContent = data.phone || '—';
                     document.getElementById('detail-profession').textContent = data.profession || '—';
+
+                    // Display profile URL as clickable link
+                    const profileUrlEl = document.getElementById('detail-profile-url');
+                    if (data.profileUrl) {
+                        profileUrlEl.innerHTML = `<a href="${data.profileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${data.profileUrl}</a>`;
+                    } else {
+                        profileUrlEl.textContent = '—';
+                    }
+
                     document.getElementById('detail-origin-self').textContent = data.nativePlaceSelf || '—';
                     document.getElementById('detail-spouse-name').textContent = data.spouseName || '—';
                     document.getElementById('detail-spouse-email').textContent = data.spouseEmail || '—';
                     document.getElementById('detail-spouse-phone').textContent = data.spousePhone || '—';
                     document.getElementById('detail-spouse-profession').textContent = data.spouseProfession || '—';
+
+                    // Display spouse profile URL as clickable link
+                    const spouseProfileUrlEl = document.getElementById('detail-spouse-profile-url');
+                    if (data.spouseProfileUrl) {
+                        spouseProfileUrlEl.innerHTML = `<a href="${data.spouseProfileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${data.spouseProfileUrl}</a>`;
+                    } else {
+                        spouseProfileUrlEl.textContent = '—';
+                    }
+
                     document.getElementById('detail-origin-spouse').textContent = data.nativePlaceSpouse || '—';
                     document.getElementById('detail-children').textContent = data.childrenDetails || '—';
 
@@ -538,6 +584,7 @@
                                 email: member.spouseEmail,
                                 phone: member.spousePhone,
                                 profession: member.spouseProfession || '—',
+                                profileUrl: member.spouseProfileUrl,
                                 nativePlaceSelf: member.nativePlaceSpouse,
                                 street: member.street,
                                 city: member.city,
@@ -579,7 +626,7 @@
             resultsCount.textContent = list.length;
 
             if (list.length === 0) {
-                dirBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #98b3c2;">No members match your search criteria.</td></tr>';
+                dirBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #98b3c2;">No members match your search criteria.</td></tr>';
                 return;
             }
 
@@ -595,6 +642,7 @@
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Private</td>
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Limited Profile</td>
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Private</td>
+                      <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Private</td>
                     </tr>`;
                 } else {
                     // Full profile: show all details
@@ -605,11 +653,17 @@
                     if (m.phone) contactParts.push(m.phone);
                     const contact = contactParts.join(' • ') || '—';
 
+                    // Format profile URL as clickable link
+                    const profileUrlDisplay = m.profileUrl ?
+                        `<a href="${m.profileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">View Profile</a>` :
+                        '—';
+
                     return `<tr style="border-bottom: 1px solid #143244;">
                       <td style="padding: 16px 8px; font-size: 15px;">${m.name || '—'}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${location}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${nativePlace}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${m.profession || '—'}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${profileUrlDisplay}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${contact}</td>
                     </tr>`;
                 }
@@ -690,7 +744,9 @@
             document.getElementById('edit-phone').value = userData.phone || '';
             document.getElementById('edit-spouse-phone').value = userData.spousePhone || '';
             document.getElementById('edit-profession').value = userData.profession || '';
+            document.getElementById('edit-profile-url').value = userData.profileUrl || '';
             document.getElementById('edit-spouse-profession').value = userData.spouseProfession || '';
+            document.getElementById('edit-spouse-profile-url').value = userData.spouseProfileUrl || '';
 
             // Set privacy radio button
             if (userData.privacyLevel === 'limited') {
@@ -730,7 +786,9 @@
                 phone: formData.get('phone'),
                 spousePhone: formData.get('spouse_phone'),
                 profession: formData.get('profession'),
+                profileUrl: formData.get('profile_url'),
                 spouseProfession: formData.get('spouse_profession'),
+                spouseProfileUrl: formData.get('spouse_profile_url'),
                 privacyLevel: formData.get('privacy')
             };
 
