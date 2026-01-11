@@ -253,8 +253,9 @@
                     </div>
                     <div style='display: flex; flex-direction: column; gap: 8px;'>
                         <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other
-                            URL</label>
-                        <input id='edit-profile-url' name='profile_url' type='url'
+                            URL (Multiple URLs separated by commas or spaces)</label>
+                        <input id='edit-profile-url' name='profile_url' type='text'
+                            placeholder='e.g., https://linkedin.com/in/yourname, https://mywebsite.com'
                             style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
                     </div>
                     <div style='display: flex; flex-direction: column; gap: 8px;'>
@@ -265,8 +266,9 @@
                     </div>
                     <div style='display: flex; flex-direction: column; gap: 8px;'>
                         <label style='color: #98b3c2; font-size: 14px; font-weight: 600;'>LinkedIn/Business/Other URL
-                            (Spouse)</label>
-                        <input id='edit-spouse-profile-url' name='spouse_profile_url' type='url'
+                            (Spouse - Multiple URLs separated by commas or spaces)</label>
+                        <input id='edit-spouse-profile-url' name='spouse_profile_url' type='text'
+                            placeholder='e.g., https://linkedin.com/in/spouse, https://website.com'
                             style='background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 12px; color: #cfe6f1; font-size: 15px;'>
                     </div>
                     <div
@@ -420,6 +422,28 @@
         let currentUser = null;
         let allMembers = [];
 
+        // Helper function to extract URLs from text and create clickable links
+        function formatUrls(urlString) {
+            if (!urlString || !urlString.trim()) return '—';
+
+            // Extract all URLs using regex (handles http/https URLs and www. URLs)
+            const urlRegex = /(https?:\/\/[^\s,]+|www\.[^\s,]+)/g;
+            const matches = urlString.match(urlRegex);
+
+            if (!matches || matches.length === 0) return '—';
+
+            // Create clickable links for each URL
+            const links = matches.map((url, index) => {
+                const cleanUrl = url.trim();
+                // Add https:// if URL starts with www. but has no protocol
+                const href = cleanUrl.startsWith('www.') ? `https://${cleanUrl}` : cleanUrl;
+                const label = `Link ${index + 1}`;
+                return `<a href="${href}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${label}</a>`;
+            });
+
+            return links.join(' • ');
+        }
+
         // Check user's country location
         async function checkUserLocation() {
             try {
@@ -488,13 +512,9 @@
                     document.getElementById('detail-phone').textContent = data.phone || '—';
                     document.getElementById('detail-profession').textContent = data.profession || '—';
 
-                    // Display profile URL as clickable link
+                    // Display profile URL(s) as clickable link(s)
                     const profileUrlEl = document.getElementById('detail-profile-url');
-                    if (data.profileUrl) {
-                        profileUrlEl.innerHTML = `<a href="${data.profileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${data.profileUrl}</a>`;
-                    } else {
-                        profileUrlEl.textContent = '—';
-                    }
+                    profileUrlEl.innerHTML = formatUrls(data.profileUrl);
 
                     document.getElementById('detail-origin-self').textContent = data.nativePlaceSelf || '—';
                     document.getElementById('detail-spouse-name').textContent = data.spouseName || '—';
@@ -502,13 +522,9 @@
                     document.getElementById('detail-spouse-phone').textContent = data.spousePhone || '—';
                     document.getElementById('detail-spouse-profession').textContent = data.spouseProfession || '—';
 
-                    // Display spouse profile URL as clickable link
+                    // Display spouse profile URL(s) as clickable link(s)
                     const spouseProfileUrlEl = document.getElementById('detail-spouse-profile-url');
-                    if (data.spouseProfileUrl) {
-                        spouseProfileUrlEl.innerHTML = `<a href="${data.spouseProfileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${data.spouseProfileUrl}</a>`;
-                    } else {
-                        spouseProfileUrlEl.textContent = '—';
-                    }
+                    spouseProfileUrlEl.innerHTML = formatUrls(data.spouseProfileUrl);
 
                     document.getElementById('detail-origin-spouse').textContent = data.nativePlaceSpouse || '—';
                     document.getElementById('detail-children').textContent = data.childrenDetails || '—';
@@ -653,10 +669,8 @@
                     if (m.phone) contactParts.push(m.phone);
                     const contact = contactParts.join(' • ') || '—';
 
-                    // Format profile URL as clickable link
-                    const profileUrlDisplay = m.profileUrl ?
-                        `<a href="${m.profileUrl}" target="_blank" style="color: #0ea5a4; text-decoration: none;">View Profile</a>` :
-                        '—';
+                    // Format profile URL(s) as clickable link(s)
+                    const profileUrlDisplay = formatUrls(m.profileUrl);
 
                     return `<tr style="border-bottom: 1px solid #143244;">
                       <td style="padding: 16px 8px; font-size: 15px;">${m.name || '—'}</td>
