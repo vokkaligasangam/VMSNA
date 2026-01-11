@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="responsive.css">
+    <title>Chapters — VMSNA</title>
+</head>
+
+<body>
+    <header>
+        <nav class="nav">
+            <div class="brand" style="display: flex; align-items: center; gap: 12px;"><a href="index.html"
+                    style="display: flex; align-items: center;"><img src="assets/img/vokkaligasangam.png"
+                        alt="VMSNA Logo" style="height: 100px !important; width: auto; margin: -20px 0;"></a><span
+                    style="font-size: 18px; font-weight: 600; white-space: nowrap; margin-right: 32px;">Vokkaliga
+                    Mahajana Sangam North
+                    America</span></div>
+            <button class="toggle" aria-label="Open menu">☰</button>
+            <div class="menu">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="chapters.html">Chapters</a></li>
+                    <li><a href="events.html">Events</a></li>
+                    <li><a href="membership.html">Membership</a></li>
+                    <li><a href="donate.html">Donate</a></li>
+                    <li><a href="media.html">Media</a></li>
+                    <li><a href="help.html">Help</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+    <section class='section'>
+        <h2 class='h2'>Chapters</h2>
+        <p class='lead'>Connect with your local VMSNA region.</p>
+        <div class='grid cols-3' style='margin-top:12px'>
+            <div class='tile'>
+                <h3>East & Northeast</h3>
+                <p>NY, NJ, PA, DC, VA, MD, MA, CT, RI, NH, VT, ME</p><a class='btn primary'
+                    href='contact.html'>Connect</a>
+            </div>
+            <div class='tile'>
+                <h3>Southeast</h3>
+                <p>GA, FL, NC, SC, AL, TN</p><a class='btn primary' href='contact.html'>Connect</a>
+            </div>
+            <div class='tile'>
+                <h3>Midwest</h3>
+                <p>IL, MI, OH, WI, MN, MO</p><a class='btn primary' href='contact.html'>Connect</a>
+            </div>
+            <div class='tile'>
+                <h3>West</h3>
+                <p>CA, WA, OR, AZ, CO</p><a class='btn primary' href='contact.html'>Connect</a>
+            </div>
+            <div class='tile'>
+                <h3>South</h3>
+                <p>TX, OK, LA, AR</p><a class='btn primary' href='contact.html'>Connect</a>
+            </div>
+            <div class='tile'>
+                <h3>Canada</h3>
+                <p>ON, BC, AB, QC, MB, SK</p><a class='btn primary' href='contact.html'>Connect</a>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <div class="cols">
+            <div><strong>VMSNA</strong><br>A volunteer-run, non-profit community platform.</div>
+            <div>
+                <h4>Explore</h4><a href="about.html">About</a><br><a href="chapters.html">Chapters</a>
+            </div>
+            <div>
+                <h4>Members</h4><a href="membership.html">Benefits</a><br><a href="donate.html">Donate</a>
+            </div>
+            <div>
+                <h4>Help</h4><a href="help.html">Welfare</a><br><a href="contact.html">Contact</a>
+            </div>
+        </div>
+        <div class="copy">© <span id="year"></span> VMSNA. All rights reserved.</div>
+        <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+    </footer>
+    <script>document.addEventListener('DOMContentLoaded', function () { const btn = document.querySelector('.nav .toggle'); const menu = document.querySelector('.nav .menu'); if (btn && menu) { btn.addEventListener('click', () => { const isOpen = menu.style.display === 'block'; menu.style.display = isOpen ? 'none' : 'block'; }); } });</script>
+</body>
+
+</html>

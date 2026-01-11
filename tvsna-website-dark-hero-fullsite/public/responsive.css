@@ -1,0 +1,268 @@
+/* === Mobile-friendly defaults === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Fluid media */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Preserve logo dimensions */
+.brand img {
+  max-width: none !important;
+  height: 100px !important;
+  width: auto !important;
+}
+
+iframe {
+  max-width: 100%;
+}
+
+/* Containers */
+.container,
+.wrap,
+.page-width {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+/* Typography scaling */
+h1 {
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+}
+
+h2 {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+h3 {
+  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+}
+
+body,
+p {
+  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+}
+
+/* Utility spacing */
+.section {
+  padding: clamp(16px, 4vw, 40px) 0;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-16 {
+  gap: 16px;
+}
+
+.gap-24 {
+  gap: 24px;
+}
+
+/* Flex grid: mobile-first */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.col {
+  flex: 1 1 100%;
+}
+
+/* Mobile default */
+
+@media (min-width: 576px) {
+  .col-sm-6 {
+    flex: 1 1 calc(50% - 16px);
+  }
+
+  .col-sm-4 {
+    flex: 1 1 calc(33.333% - 16px);
+  }
+}
+
+@media (min-width: 768px) {
+  .col-md-6 {
+    flex: 1 1 calc(50% - 16px);
+  }
+
+  .col-md-4 {
+    flex: 1 1 calc(33.333% - 16px);
+  }
+
+  .col-md-3 {
+    flex: 1 1 calc(25% - 16px);
+  }
+}
+
+@media (min-width: 992px) {
+  .col-lg-6 {
+    flex: 1 1 calc(50% - 16px);
+  }
+
+  .col-lg-4 {
+    flex: 1 1 calc(33.333% - 16px);
+  }
+
+  .col-lg-3 {
+    flex: 1 1 calc(25% - 16px);
+  }
+}
+
+/* Navigation: mobile first */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav .menu {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.nav .menu a {
+  text-decoration: none;
+  padding: 10px 12px;
+  display: block;
+}
+
+.nav .toggle {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+@media (min-width: 768px) {
+  .nav .toggle {
+    display: none;
+  }
+
+  .nav .menu {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+  }
+}
+
+/* Tables & code blocks */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+pre,
+code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Buttons/touch targets */
+button,
+.btn,
+a.button {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+/* Cards & images */
+.card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Forms */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+/* Footer stacks nicely on mobile */
+.footer-cols {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .footer-cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Grid system */
+.grid {
+  display: grid;
+  gap: 16px;
+}
+
+.grid.cols-2 {
+  grid-template-columns: 1fr;
+}
+
+.grid.cols-3 {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .grid.cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Prevent accidental sideways scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Reduce gap between hero and mission section on mobile */
+@media (max-width: 767px) {
+  .section[style*="padding-top:120px"] {
+    padding-top: 40px !important;
+  }
+}

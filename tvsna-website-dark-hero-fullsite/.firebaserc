@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "vmsna-e9bd0"
+  },
+  "targets": {
+    "vmsna-e9bd0": {
+      "hosting": {
+        "main": [
+          "vmsna"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
