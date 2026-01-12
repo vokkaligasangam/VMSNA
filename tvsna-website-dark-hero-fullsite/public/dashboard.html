@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
 </head>
 
 <body>
@@ -417,6 +418,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
+    const functions = firebase.functions();
 
     (function () {
         let currentUser = null;
@@ -472,6 +474,33 @@
                 return;
             }
 
+            // Check email verification
+            if (!user.emailVerified) {
+                document.getElementById('dashboard-content').style.display = 'none';
+                document.getElementById('dashboard-content').insertAdjacentHTML('beforebegin', `
+                    <div style="text-align: center; padding: 60px 20px; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #d9a441; font-size: 28px; margin-bottom: 16px;">📧 Email Verification Required</h2>
+                        <p style="color: #cfe6f1; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+                            Please verify your email address to continue. We sent a verification link to:
+                        </p>
+                        <p style="color: #0ea5a4; font-size: 18px; font-weight: 600; margin-bottom: 24px;">
+                            ${user.email}
+                        </p>
+                        <p style="color: #98b3c2; font-size: 14px; margin-bottom: 32px;">
+                            Check your inbox (and spam/junk folder) for the verification email.<br>
+                            After verifying, refresh this page or login again.
+                        </p>
+                        <button onclick="location.reload()" style="background: #0ea5a4; color: #072025; border: none; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; margin-right: 12px;">
+                            ✓ I Verified - Refresh Page
+                        </button>
+                        <button onclick="firebase.auth().currentUser.sendEmailVerification().then(() => alert('Verification email sent! Check your inbox.')).catch(err => alert('Error: ' + err.message))" style="background: transparent; color: #0ea5a4; border: 1px solid #0ea5a4; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer;">
+                            📧 Resend Verification Email
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
             // Check if user is accessing from allowed location
             const isAllowedLocation = await checkUserLocation();
             if (!isAllowedLocation) {
@@ -479,6 +508,14 @@
                 alert('Access is restricted to users in the United States and Canada only.');
                 window.location.href = 'membership.html';
                 return;
+            }
+
+            // Trigger admin notification check (only sends if not sent before)
+            try {
+                const checkVerification = functions.httpsCallable('checkEmailVerification');
+                await checkVerification();
+            } catch (error) {
+                console.error('Error checking verification:', error);
             }
 
             currentUser = user;
@@ -541,6 +578,32 @@
                     if (data.name) {
                         document.getElementById('user-name-display').textContent = data.name;
                     }
+
+                    // Check approval status
+                    if (data.status === 'pending') {
+                        // Hide directory for pending members
+                        document.getElementById('dir-loading').style.display = 'none';
+                        const dirSection = document.querySelector('.tile:has(#dir-body)');
+                        if (dirSection) {
+                            dirSection.innerHTML = `
+                                <h3 style='color: #d9a441; font-size: 24px; margin-top: 0; margin-bottom: 24px;'>Member Directory</h3>
+                                <div style='background: #0d1f2d; border: 1px solid #1a3a4f; border-radius: 8px; padding: 32px; text-align: center;'>
+                                    <div style='font-size: 48px; margin-bottom: 16px;'>⏳</div>
+                                    <h4 style='color: #0ea5a4; font-size: 20px; margin-bottom: 12px;'>Application Under Review</h4>
+                                    <p style='color: #98b3c2; font-size: 15px; line-height: 1.6;'>
+                                        Thank you for registering! Your membership application is currently being reviewed by our admin team.<br><br>
+                                        You will receive an email notification once your application is approved and you can access the member directory.
+                                    </p>
+                                </div>
+                            `;
+                        }
+                        window.userIsPending = true;
+                    } else if (data.status === 'rejected') {
+                        alert('Your membership application was not approved. Please contact us for more information.');
+                        await auth.signOut();
+                        window.location.href = 'membership.html';
+                        return;
+                    }
                 } else {
                     console.warn('No membership application found for this user');
                     document.getElementById('user-details-loading').innerHTML = '<span style="color: #f39c12;">No membership application found. Your data may still be processing.</span>';
@@ -558,9 +621,16 @@
         async function loadMemberDirectory() {
             try {
                 console.log('Loading member directory...');
-                // Remove the orderBy to avoid needing a composite index
+
+                // Don't load directory if user is pending approval
+                if (window.userIsPending) {
+                    console.log('User is pending approval, skipping directory load');
+                    return;
+                }
+
+                // Only show approved members in directory
                 const snapshot = await db.collection('membershipApplications')
-                    .where('status', '==', 'pending')
+                    .where('status', '==', 'approved')
                     .get();
 
                 console.log('Found members:', snapshot.size);

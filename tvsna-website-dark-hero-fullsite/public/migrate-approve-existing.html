@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migrate Existing Members - VMSNA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a1520;
+            color: #fff;
+        }
+
+        .container {
+            background: #0d1f2d;
+            border: 1px solid #143244;
+            border-radius: 12px;
+            padding: 32px;
+        }
+
+        h1 {
+            color: #d9a441;
+        }
+
+        button {
+            background: #0ea5a4;
+            color: #072025;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            background: #0d4a2d;
+            border: 1px solid #0ea5a4;
+            display: block;
+        }
+
+        .error {
+            background: #4a0d0d;
+            border: 1px solid #e74c3c;
+            display: block;
+        }
+
+        .info {
+            background: #1a3a4f;
+            border: 1px solid #0ea5a4;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>⚠️ One-Time Migration Script</h1>
+        <p><strong>Purpose:</strong> Approve all existing members so they keep access to the directory.</p>
+        <p><strong>What this does:</strong></p>
+        <ul>
+            <li>Finds all members with <code>status: 'pending'</code></li>
+            <li>Updates them to <code>status: 'approved'</code></li>
+            <li>Existing members keep full access</li>
+            <li>New registrations after this will need admin approval</li>
+        </ul>
+
+        <p style="color: #d9a441;"><strong>⚠️ Important:</strong> Run this ONCE before deploying the approval system!
+        </p>
+
+        <button id="migrateBtn" onclick="migrateMembers()">Approve All Existing Members</button>
+
+        <div id="status"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBtPNMDkpYpWDumVd5srmQR0RSJF9azdBA",
+            authDomain: "vmsna-e9bd0.firebaseapp.com",
+            projectId: "vmsna-e9bd0",
+            storageBucket: "vmsna-e9bd0.firebasestorage.app",
+            messagingSenderId: "863778654324",
+            appId: "1:863778654324:web:0be4038e6383505f86a921",
+            measurementId: "G-GW1V7MS84J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Check if user is logged in
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                document.getElementById('status').className = 'error';
+                document.getElementById('status').innerHTML = '❌ You must be logged in to run this script.<br><br><a href="dashboard.html" style="color: #0ea5a4;">Go to Dashboard to Login</a>';
+                document.getElementById('migrateBtn').disabled = true;
+            }
+        });
+
+        async function migrateMembers() {
+            const btn = document.getElementById('migrateBtn');
+            const statusDiv = document.getElementById('status');
+
+            btn.disabled = true;
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = '🔄 Processing... Please wait.';
+
+            try {
+                // Get all pending members
+                const snapshot = await db.collection('membershipApplications')
+                    .where('status', '==', 'pending')
+                    .get();
+
+                if (snapshot.empty) {
+                    statusDiv.className = 'info';
+                    statusDiv.innerHTML = 'ℹ️ No pending members found. Migration may have already been completed.';
+                    return;
+                }
+
+                const updateCount = snapshot.size;
+                statusDiv.innerHTML = `🔄 Found ${updateCount} members to approve. Updating...`;
+
+                // Update all to approved
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => {
+                    batch.update(doc.ref, {
+                        status: 'approved',
+                        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        approvedBy: 'migration-script'
+                    });
+                });
+
+                await batch.commit();
+
+                statusDiv.className = 'success';
+                statusDiv.innerHTML = `✅ Successfully approved ${updateCount} existing members!<br><br>
+                    You can now deploy the approval system. All existing members will keep their access.`;
+
+                console.log(`Migration complete: ${updateCount} members approved`);
+
+            } catch (error) {
+                console.error('Migration error:', error);
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = `❌ Error: ${error.message}<br><br>Please try again or contact support.`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

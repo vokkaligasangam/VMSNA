@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Manual Admin Notification</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+</head>
+
+<body style="background: #0a1520; color: #fff; font-family: Arial; padding: 40px; text-align: center;">
+    <h2>Manual Admin Notification Trigger</h2>
+    <p>Use this to manually send admin notification for verified users</p>
+    <button onclick="triggerNotification()"
+        style="background: #0ea5a4; color: #072025; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer;">
+        Send Notification for Verified Users
+    </button>
+    <div id="result" style="margin-top: 20px; color: #0ea5a4;"></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBtPNMDkpYpWDumVd5srmQR0RSJF9azdBA",
+            authDomain: "vmsna-e9bd0.firebaseapp.com",
+            projectId: "vmsna-e9bd0",
+            storageBucket: "vmsna-e9bd0.firebasestorage.app",
+            messagingSenderId: "863778654324",
+            appId: "1:863778654324:web:0be4038e6383505f86a921",
+            measurementId: "G-GW1V7MS84J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const functions = firebase.functions();
+
+        async function triggerNotification() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Checking...';
+
+            try {
+                const checkVerification = functions.httpsCallable('checkEmailVerification');
+                const result = await checkVerification();
+
+                if (result.data.notificationSent) {
+                    resultDiv.textContent = '✅ Admin notification sent successfully!';
+                    resultDiv.style.color = '#0ea5a4';
+                } else if (result.data.verified) {
+                    resultDiv.textContent = 'Email verified but no pending application found or notification already sent.';
+                    resultDiv.style.color = '#d9a441';
+                } else {
+                    resultDiv.textContent = 'Email not verified yet.';
+                    resultDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+                resultDiv.style.color = '#e74c3c';
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+
+</html>

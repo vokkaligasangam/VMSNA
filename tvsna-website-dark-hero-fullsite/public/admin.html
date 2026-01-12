@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="responsive.css">
+    <title>Admin Panel — VMSNA</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav class="nav">
+            <div class="brand" style="display: flex; align-items: center; gap: 12px;">
+                <a href="index.html" style="display: flex; align-items: center;">
+                    <img src="assets/img/vokkaligasangam.png" alt="VMSNA Logo"
+                        style="height: 100px !important; width: auto; margin: -20px 0;">
+                </a>
+                <span style="font-size: 18px; font-weight: 600; white-space: nowrap; margin-right: 32px;">
+                    Vokkaliga Mahajana Sangam North America
+                </span>
+            </div>
+            <button class="toggle" aria-label="Open menu">☰</button>
+            <div class="menu">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <section class='section' style='max-width: 1600px; margin: 0 auto; padding: 48px 24px;'>
+        <div style='text-align: center; margin-bottom: 48px;'>
+            <h2 class='h2' style='font-size: 36px; margin-bottom: 16px; color: #fff;'>Admin Panel</h2>
+            <p class='lead'
+                style='max-width: 800px; margin: 0 auto; font-size: 18px; line-height: 1.8; color: #d6e7f0;'>
+                Review and approve membership applications
+            </p>
+            <button id='logout-btn'
+                style='margin-top: 16px; background: transparent; color: #d9a441; border: 1px solid #d9a441; border-radius: 8px; padding: 10px 24px; font-size: 15px; font-weight: 600; cursor: pointer;'>
+                Logout
+            </button>
+        </div>
+
+        <!-- Pending Applications -->
+        <div class='tile'
+            style='background: #0a1a27; border: 1px solid #143244; border-radius: 12px; padding: 32px; margin-bottom: 32px;'>
+            <h3 style='color: #d9a441; font-size: 24px; margin-top: 0; margin-bottom: 24px;'>Pending Applications</h3>
+
+            <div id='loading' style='text-align: center; padding: 40px; color: #98b3c2;'>
+                Loading applications...
+            </div>
+
+            <div id='applications-container' style='display: none;'></div>
+
+            <div id='no-applications' style='display: none; text-align: center; padding: 40px; color: #98b3c2;'>
+                No pending applications at this time.
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="cols">
+            <div><strong>VMSNA</strong><br>A volunteer-run, non-profit community platform.</div>
+            <div>
+                <h4>Explore</h4><a href="about.html">About</a><br><a href="chapters.html">Chapters</a>
+            </div>
+            <div>
+                <h4>Members</h4><a href="membership.html">Benefits</a><br><a href="donate.html">Donate</a>
+            </div>
+            <div>
+                <h4>Help</h4><a href="help.html">Welfare</a><br><a href="contact.html">Contact</a>
+            </div>
+        </div>
+        <div class="copy">© <span id="year"></span> VMSNA. All rights reserved.</div>
+        <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.querySelector('.nav .toggle');
+            const menu = document.querySelector('.nav .menu');
+            if (btn && menu) {
+                btn.addEventListener('click', () => {
+                    const isOpen = menu.style.display === 'block';
+                    menu.style.display = isOpen ? 'none' : 'block';
+                });
+            }
+        });
+    </script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBtPNMDkpYpWDumVd5srmQR0RSJF9azdBA",
+            authDomain: "vmsna-e9bd0.firebaseapp.com",
+            projectId: "vmsna-e9bd0",
+            storageBucket: "vmsna-e9bd0.firebasestorage.app",
+            messagingSenderId: "863778654324",
+            appId: "1:863778654324:web:0be4038e6383505f86a921",
+            measurementId: "G-GW1V7MS84J"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const functions = firebase.functions();
+
+        // List of admin emails (update this with your admin emails)
+        const ADMIN_EMAILS = [
+            'vikramkanagaraj@gmail.com',
+            'vokkaligasangam@gmail.com',
+            'sureshgowder@gmail.com',
+            'deeppak.kambarayar@gmail.com',
+            'krishnakumarmuthian@gmail.com',
+            'Muru100@gmail.com',
+            'Vanithavijay@gmail.com',
+            'Raghuraja@gmail.com',
+            'jegan.thiru@gmail.com',
+            'skparamasivam@gmail.com',
+            'drnandeesh@hotmail.com',
+            'poornisaran@gmail.com',
+            'thirumudi@gmail.com',
+            // Add more admin emails here
+        ];
+
+        // Check authentication and admin access
+        auth.onAuthStateChanged(async user => {
+            if (!user) {
+                window.location.href = 'membership.html';
+                return;
+            }
+
+            // Check if user is admin
+            if (!ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+                alert('Access denied. Admin privileges required.');
+                await auth.signOut();
+                window.location.href = 'membership.html';
+                return;
+            }
+
+            loadPendingApplications();
+        });
+
+        // Load pending applications
+        async function loadPendingApplications() {
+            try {
+                const snapshot = await db.collection('membershipApplications')
+                    .where('status', '==', 'pending')
+                    .orderBy('submittedAt', 'desc')
+                    .get();
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (snapshot.empty) {
+                    document.getElementById('no-applications').style.display = 'block';
+                    return;
+                }
+
+                const container = document.getElementById('applications-container');
+                container.style.display = 'block';
+                container.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const appCard = createApplicationCard(doc.id, data);
+                    container.appendChild(appCard);
+                });
+
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                document.getElementById('loading').innerHTML = `<span style="color: #e74c3c;">Error: ${error.message}</span>`;
+            }
+        }
+
+        // Create application card
+        function createApplicationCard(docId, data) {
+            const card = document.createElement('div');
+            card.id = 'app-' + docId;
+            card.style.cssText = 'background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 24px; margin-bottom: 20px; transition: opacity 0.3s ease-out, transform 0.3s ease-out;';
+
+            const submittedDate = data.submittedAt ? new Date(data.submittedAt.toDate()).toLocaleDateString() : 'N/A';
+
+            card.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Name</div>
+                        <div style="color: #cfe6f1; font-size: 15px; font-weight: 500;">${data.name || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Email</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.email || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Phone</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.phone || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Street</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.street || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">City</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.city || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">State</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.state || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Zip Code</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.zip || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Profession</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.profession || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Native Place (Self)</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.nativePlaceSelf || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Name</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseName || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Email</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseEmail || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Phone</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.spousePhone || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Profession</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseProfession || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Native Place (Spouse)</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.nativePlaceSpouse || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Children Details</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.childrenDetails || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Privacy Level</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.privacyLevel || '—'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Submitted</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${submittedDate}</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                    <button onclick="approveApplication('${docId}', '${data.email}', '${data.name}')" 
+                        style="background: #0ea5a4; color: #072025; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        ✓ Approve
+                    </button>
+                    <button onclick="rejectApplication('${docId}')" 
+                        style="background: transparent; color: #e74c3c; border: 1px solid #e74c3c; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        ✗ Reject
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Approve application
+        async function approveApplication(docId, email, name) {
+            if (!confirm(`Approve membership for ${name}?`)) return;
+
+            try {
+                const adminEmail = auth.currentUser.email;
+
+                // Fade out the card
+                const card = document.getElementById('app-' + docId);
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                }
+
+                await db.collection('membershipApplications').doc(docId).update({
+                    status: 'approved',
+                    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    approvedBy: adminEmail
+                });
+
+                // Call cloud function to send approval email
+                try {
+                    console.log('About to call sendApprovalEmail with:', { email, name });
+                    console.log('Functions object:', functions);
+                    const sendEmail = functions.httpsCallable('sendApprovalEmail');
+                    console.log('Callable function created:', sendEmail);
+                    const result = await sendEmail({ email, name });
+                    console.log('Email function result:', result);
+                    alert(`✅ ${name} has been approved! Approval email sent.`);
+                } catch (emailError) {
+                    console.error('Email sending error:', emailError);
+                    console.error('Error code:', emailError.code);
+                    console.error('Error message:', emailError.message);
+                    console.error('Error details:', emailError.details);
+                    console.error('Full error object:', JSON.stringify(emailError, null, 2));
+                    console.error('Stack trace:', emailError.stack);
+                    console.error('HTTP error response:', emailError.httpErrorCode);
+                    alert(`✅ ${name} has been approved!\n\n⚠️ However, the approval email could not be sent automatically.\n\nPlease manually email ${email} to notify them of their approval with dashboard access at: https://vmsna.web.app/dashboard.html`);
+                }
+
+                // Wait for animation, then reload
+                setTimeout(() => loadPendingApplications(), 300);
+
+            } catch (error) {
+                console.error('Error approving application:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Reject application
+        async function rejectApplication(docId) {
+            const reason = prompt('Optional: Enter rejection reason (or leave blank):');
+            if (reason === null) return; // User cancelled
+
+            try {
+                const adminEmail = auth.currentUser.email;
+
+                // Fade out the card
+                const card = document.getElementById('app-' + docId);
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                }
+
+                await db.collection('membershipApplications').doc(docId).update({
+                    status: 'rejected',
+                    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    rejectedBy: adminEmail,
+                    rejectionReason: reason || 'Not specified'
+                });
+
+                alert('Application rejected.');
+
+                // Wait for animation, then reload
+                setTimeout(() => loadPendingApplications(), 300);
+
+            } catch (error) {
+                console.error('Error rejecting application:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await auth.signOut();
+                    window.location.href = 'membership.html';
+                } catch (error) {
+                    console.error('Error logging out:', error);
+                    alert('Error logging out. Please try again.');
+                }
+            });
+        } else {
+            console.error('Logout button not found');
+        }
+    </script>
+</body>
+
+</html>

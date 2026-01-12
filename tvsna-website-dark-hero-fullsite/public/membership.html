@@ -304,7 +304,8 @@
         // Store membership application in Firestore
         await db.collection('membershipApplications').add({
           ...data,
-          userId: userCredential.user.uid
+          userId: userCredential.user.uid,
+          adminNotified: false  // Track if admin has been notified
         });
 
         alert('Your membership application has been submitted successfully!\n\n⚠️ IMPORTANT: A verification email has been sent to ' + data.email + '\n\n📧 FROM: Vokkaliga Mahajana Sangam North America\n🌐 Website: www.vmsna.org\n\n✓ This is a legitimate email from Vokkaliga Mahajana Sangam North America\n✓ Please check your SPAM/JUNK folder if you don\'t see it\n✓ Mark it as "Not Spam" to ensure future emails arrive in your inbox\n\nYou must verify your email before you can log in.');

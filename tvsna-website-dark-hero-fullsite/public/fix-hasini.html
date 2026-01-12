@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Hasini Account - VMSNA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        button {
+            background: #0ea5a4;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0c8a89;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Fix Hasini Account</h1>
+    <p>This will update Hasini's application to set <code>adminNotified: false</code> so the scheduled function will
+        pick it up.</p>
+
+    <button onclick="fixHasini()">Fix Hasini's Account</button>
+
+    <div id="status"></div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, query, where, getDocs, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2kxkY2AWz_M11sHiRQWO2bh9f6wYYTDY",
+            authDomain: "vmsna-e9bd0.firebaseapp.com",
+            projectId: "vmsna-e9bd0",
+            storageBucket: "vmsna-e9bd0.firebasestorage.app",
+            messagingSenderId: "713819139883",
+            appId: "1:713819139883:web:fb9e8d4f39a9fc36c789c1",
+            measurementId: "G-QLMZNM8HJ4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Check if user is admin
+        const ADMIN_EMAILS = [
+            'vikramkanagaraj@gmail.com',
+            'vokkaligasangam@gmail.com'
+        ];
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user || !ADMIN_EMAILS.includes(user.email)) {
+                document.getElementById('status').innerHTML = '<p class="error">❌ Access denied. Admin only.</p>';
+                document.querySelector('button').disabled = true;
+            }
+        });
+
+        window.fixHasini = async function () {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p>Processing...</p>';
+
+            try {
+                // Find Hasini's application
+                const q = query(
+                    collection(db, 'membershipApplications'),
+                    where('email', '==', 'hasini.sivanan@gmail.com')
+                );
+
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    statusDiv.innerHTML = '<p class="error">❌ Application not found for hasini.sivanan@gmail.com</p>';
+                    return;
+                }
+
+                // Update the document
+                const doc = snapshot.docs[0];
+                await updateDoc(doc.ref, {
+                    adminNotified: false
+                });
+
+                statusDiv.innerHTML = '<p class="success">✅ Success! Hasini\'s account has been updated.<br>The scheduled function will pick it up within 5 minutes and send the admin notification.</p>';
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = '<p class="error">❌ Error: ' + error.message + '</p>';
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -2,11 +2,17 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'vikramkanagaraj@gmail.com';
+    }
+    
     // Membership applications - users can create their own, read all pending ones
     match /membershipApplications/{docId} {
       allow create: if request.auth != null;
       allow read: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     
     // Members directory - authenticated users can read and write their own
