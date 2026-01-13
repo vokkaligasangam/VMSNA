@@ -223,6 +223,7 @@ export const checkEmailVerification = onCall(async (request) => {
             .collection("membershipApplications")
             .where("userId", "==", userId)
             .where("status", "==", "pending")
+            .where("adminNotified", "==", false)
             .limit(1)
             .get();
 
@@ -366,3 +367,26 @@ export const checkVerifiedUsers = onSchedule(
             logger.error("Error in scheduled verification check:", error);
         }
     });
+
+// Get user's email verification status (for admin panel)
+export const getUserVerificationStatus = onCall({
+    region: "us-central1",
+    invoker: "public"
+}, async (request) => {
+    const { userId } = request.data;
+
+    if (!userId) {
+        throw new Error("Missing userId");
+    }
+
+    try {
+        const userRecord = await admin.auth().getUser(userId);
+        return {
+            emailVerified: userRecord.emailVerified,
+            email: userRecord.email,
+        };
+    } catch (error) {
+        logger.error(`Error fetching verification status for ${userId}:`, error);
+        throw new Error(`Failed to get user status: ${error}`);
+    }
+});

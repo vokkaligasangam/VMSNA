@@ -168,11 +168,25 @@
                 container.style.display = 'block';
                 container.innerHTML = '';
 
-                snapshot.forEach(doc => {
+                // Fetch verification status for each user
+                for (const doc of snapshot.docs) {
                     const data = doc.data();
-                    const appCard = createApplicationCard(doc.id, data);
+                    let emailVerified = false;
+
+                    // Check email verification status from Firebase Auth
+                    if (data.userId) {
+                        try {
+                            const checkVerification = functions.httpsCallable('getUserVerificationStatus');
+                            const result = await checkVerification({ userId: data.userId });
+                            emailVerified = result.data.emailVerified || false;
+                        } catch (error) {
+                            console.warn('Could not fetch verification status for', data.email, error);
+                        }
+                    }
+
+                    const appCard = createApplicationCard(doc.id, data, emailVerified);
                     container.appendChild(appCard);
-                });
+                }
 
             } catch (error) {
                 console.error('Error loading applications:', error);
@@ -181,12 +195,17 @@
         }
 
         // Create application card
-        function createApplicationCard(docId, data) {
+        function createApplicationCard(docId, data, emailVerified) {
             const card = document.createElement('div');
             card.id = 'app-' + docId;
-            card.style.cssText = 'background: #07111b; border: 1px solid #143244; border-radius: 8px; padding: 24px; margin-bottom: 20px; transition: opacity 0.3s ease-out, transform 0.3s ease-out;';
+            const borderColor = emailVerified ? '#143244' : '#d9a44120';
+            card.style.cssText = `background: #07111b; border: 2px solid ${borderColor}; border-radius: 8px; padding: 24px; margin-bottom: 20px; transition: opacity 0.3s ease-out, transform 0.3s ease-out;`;
 
             const submittedDate = data.submittedAt ? new Date(data.submittedAt.toDate()).toLocaleDateString() : 'N/A';
+
+            const verificationBadge = emailVerified
+                ? '<span style="display: inline-block; background: #0ea5a430; color: #0ea5a4; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 8px;">✓ Verified</span>'
+                : '<span style="display: inline-block; background: #d9a44130; color: #d9a441; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 8px;">⚠ Not Verified</span>';
 
             card.innerHTML = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px;">
@@ -196,7 +215,7 @@
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Email</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.email || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${data.email || '—'}${verificationBadge}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Phone</div>
