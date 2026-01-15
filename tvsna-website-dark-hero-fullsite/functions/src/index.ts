@@ -45,7 +45,8 @@ const gmailTransporter = nodemailer.createTransport({
 // Send approval email - allows authenticated users to trigger via client
 export const sendApprovalEmail = onCall({
     region: "us-central1",
-    invoker: "public"
+    invoker: "public",
+    secrets: ["GMAIL_APP_PASSWORD"]
 }, async (request) => {
     // Auth check temporarily disabled for testing
     // if (!request.auth) {
@@ -90,7 +91,10 @@ export const sendApprovalEmail = onCall({
 
 // Automatically send approval email when status changes to "approved"
 export const sendApprovalEmailOnStatusChange = onDocumentUpdated(
-    "membershipApplications/{docId}",
+    {
+        document: "membershipApplications/{docId}",
+        secrets: ["GMAIL_APP_PASSWORD"]
+    },
     async (event) => {
         const beforeData = event.data?.before.data();
         const afterData = event.data?.after.data();
@@ -136,7 +140,10 @@ export const sendApprovalEmailOnStatusChange = onDocumentUpdated(
 
 // Send admin notification when new member registers AND verifies email
 export const notifyAdminNewApplication = onDocumentCreated(
-    "membershipApplications/{docId}",
+    {
+        document: "membershipApplications/{docId}",
+        secrets: ["GMAIL_APP_PASSWORD"]
+    },
     async (event) => {
         const data = event.data?.data();
 
@@ -228,7 +235,9 @@ export const notifyAdminNewApplication = onDocumentCreated(
 );
 
 // Check email verification and trigger admin notification
-export const checkEmailVerification = onCall(async (request) => {
+export const checkEmailVerification = onCall({
+    secrets: ["GMAIL_APP_PASSWORD"]
+}, async (request) => {
     const userId = request.auth?.uid;
 
     if (!userId) {
@@ -327,6 +336,7 @@ export const checkVerifiedUsers = onSchedule(
         schedule: "every 5 minutes",
         timeZone: "America/Los_Angeles",
         region: "us-central1",
+        secrets: ["GMAIL_APP_PASSWORD"],
     },
     async () => {
         logger.info("Running scheduled check for verified users...");
