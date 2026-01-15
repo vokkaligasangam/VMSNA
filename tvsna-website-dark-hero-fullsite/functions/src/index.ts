@@ -145,6 +145,12 @@ export const notifyAdminNewApplication = onDocumentCreated(
             return; // Only notify for new pending applications
         }
 
+        // Skip if already notified
+        if (data.adminNotified === true) {
+            logger.info(`Admin already notified for ${data.email}, skipping duplicate notification`);
+            return;
+        }
+
         const { userId, name, email, phone, city, state, profession } = data;
 
         // Check if user has verified their email
@@ -160,13 +166,33 @@ export const notifyAdminNewApplication = onDocumentCreated(
             return;
         }
 
-        const adminEmail = "vokkaligasangam@gmail.com"; // Admin email
+        // Use transaction to prevent duplicate notifications
+        const db = admin.firestore();
+        const docRef = event.data?.ref;
 
-        const mailOptions = {
-            from: "VMSNA <vokkaligasangam@gmail.com>",
-            to: adminEmail,
-            subject: "🔔 New VMSNA Membership Application",
-            html: `
+        if (!docRef) {
+            logger.error("Document reference is undefined");
+            return;
+        }
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(docRef);
+                const currentData = doc.data();
+
+                // Double-check within transaction
+                if (currentData?.adminNotified === true) {
+                    logger.info(`Admin already notified (checked in transaction) for ${email}`);
+                    return;
+                }
+
+                const adminEmail = "vokkaligasangam@gmail.com";
+
+                const mailOptions = {
+                    from: "VMSNA <vokkaligasangam@gmail.com>",
+                    to: adminEmail,
+                    subject: "🔔 New VMSNA Membership Application",
+                    html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #d9a441;">New Membership Application</h2>
           <p>A new member has registered and verified their email.</p>
@@ -187,14 +213,14 @@ export const notifyAdminNewApplication = onDocumentCreated(
           </p>
         </div>
       `,
-        };
+                };
 
-        try {
-            await gmailTransporter.sendMail(mailOptions);
-            logger.info(`Admin notification sent for new application: ${name} (${email})`);
+                await gmailTransporter.sendMail(mailOptions);
+                logger.info(`Admin notification sent for new application: ${name} (${email})`);
 
-            // Mark as notified
-            await event.data?.ref.update({ adminNotified: true });
+                // Mark as notified within transaction
+                transaction.update(docRef, { adminNotified: true });
+            });
         } catch (error) {
             logger.error("Error sending admin notification:", error);
             // Don't throw - we don't want registration to fail if email fails
@@ -218,8 +244,10 @@ export const checkEmailVerification = onCall(async (request) => {
             return { verified: false };
         }
 
+        const db = admin.firestore();
+
         // Find the user's application
-        const snapshot = await admin.firestore()
+        const snapshot = await db
             .collection("membershipApplications")
             .where("userId", "==", userId)
             .where("status", "==", "pending")
@@ -234,15 +262,28 @@ export const checkEmailVerification = onCall(async (request) => {
         const doc = snapshot.docs[0];
         const data = doc.data();
 
-        // Send admin notification
-        const { name, email, phone, city, state, profession } = data;
-        const adminEmail = "vokkaligasangam@gmail.com";
+        // Use transaction to prevent duplicate notifications
+        let emailSent = false;
 
-        const mailOptions = {
-            from: "VMSNA <vokkaligasangam@gmail.com>",
-            to: adminEmail,
-            subject: "🔔 New VMSNA Membership Application",
-            html: `
+        await db.runTransaction(async (transaction) => {
+            const freshDoc = await transaction.get(doc.ref);
+            const freshData = freshDoc.data();
+
+            // Check if already notified within transaction
+            if (freshData?.adminNotified === true) {
+                logger.info(`Admin already notified for ${data.email} (checked in transaction)`);
+                return;
+            }
+
+            // Send admin notification
+            const { name, email, phone, city, state, profession } = freshData || {};
+            const adminEmail = "vokkaligasangam@gmail.com";
+
+            const mailOptions = {
+                from: "VMSNA <vokkaligasangam@gmail.com>",
+                to: adminEmail,
+                subject: "🔔 New VMSNA Membership Application",
+                html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #d9a441;">New Membership Application</h2>
           <p>A new member has registered and verified their email.</p>
@@ -263,15 +304,17 @@ export const checkEmailVerification = onCall(async (request) => {
           </p>
         </div>
       `,
-        };
+            };
 
-        await gmailTransporter.sendMail(mailOptions);
-        logger.info(`Admin notification sent after email verification: ${name} (${email})`);
+            await gmailTransporter.sendMail(mailOptions);
+            logger.info(`Admin notification sent after email verification: ${name} (${email})`);
 
-        // Mark as notified
-        await doc.ref.update({ adminNotified: true });
+            // Mark as notified within transaction
+            transaction.update(doc.ref, { adminNotified: true });
+            emailSent = true;
+        });
 
-        return { verified: true, notificationSent: true };
+        return { verified: true, notificationSent: emailSent };
     } catch (error) {
         logger.error("Error in checkEmailVerification:", error);
         throw new Error(`Failed to process: ${error}`);
@@ -322,12 +365,23 @@ export const checkVerifiedUsers = onSchedule(
                         continue;
                     }
 
-                    // Send admin notification
-                    const mailOptions = {
-                        from: "VMSNA <vokkaligasangam@gmail.com>",
-                        to: adminEmail,
-                        subject: "🔔 New VMSNA Membership Application",
-                        html: `
+                    // Use transaction to prevent duplicate notifications
+                    await db.runTransaction(async (transaction) => {
+                        const freshDoc = await transaction.get(doc.ref);
+                        const freshData = freshDoc.data();
+
+                        // Double-check within transaction
+                        if (freshData?.adminNotified === true) {
+                            logger.info(`Admin already notified for ${email} (checked in transaction)`);
+                            return;
+                        }
+
+                        // Send admin notification
+                        const mailOptions = {
+                            from: "VMSNA <vokkaligasangam@gmail.com>",
+                            to: adminEmail,
+                            subject: "🔔 New VMSNA Membership Application",
+                            html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #d9a441;">New Membership Application</h2>
           <p>A new member has registered and verified their email.</p>
@@ -348,14 +402,15 @@ export const checkVerifiedUsers = onSchedule(
           </p>
         </div>
       `,
-                    };
+                        };
 
-                    await gmailTransporter.sendMail(mailOptions);
-                    logger.info(`Admin notification sent for verified user: ${name} (${email})`);
+                        await gmailTransporter.sendMail(mailOptions);
+                        logger.info(`Admin notification sent for verified user: ${name} (${email})`);
 
-                    // Mark as notified
-                    await doc.ref.update({ adminNotified: true });
-                    notificationsSent++;
+                        // Mark as notified within transaction
+                        transaction.update(doc.ref, { adminNotified: true });
+                        notificationsSent++;
+                    });
                 } catch (error) {
                     logger.error(`Error processing user ${email}:`, error);
                     // Continue with next user
