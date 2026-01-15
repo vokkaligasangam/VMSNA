@@ -21,10 +21,10 @@ service cloud.firestore {
       ];
     }
     
-    // Membership applications - users can create their own, read all pending ones
+    // Membership applications - users can create their own, admins can read/update all
     match /membershipApplications/{docId} {
-      allow create: if request.auth != null;
-      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
@@ -32,7 +32,8 @@ service cloud.firestore {
     // Members directory - authenticated users can read and write their own
     match /members/{docId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
       allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     

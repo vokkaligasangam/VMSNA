@@ -33,13 +33,12 @@ admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
 // Configure Gmail SMTP transporter
-// IMPORTANT: Replace these with your Gmail credentials
-// You need to use an "App Password" - see: https://support.google.com/accounts/answer/185833
+// Use Firebase environment configuration for credentials
 const gmailTransporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-        user: "vokkaligasangam@gmail.com", // Replace with your Gmail address
-        pass: "hlmzkymawgrctphq", // Replace with your Gmail App Password (NOT your regular password)
+        user: process.env.GMAIL_USER || "vokkaligasangam@gmail.com",
+        pass: process.env.GMAIL_APP_PASSWORD || "", // Set via: firebase functions:secrets:set GMAIL_APP_PASSWORD
     },
 });
 
