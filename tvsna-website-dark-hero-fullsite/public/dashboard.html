@@ -440,30 +440,40 @@
                 // Add https:// if URL starts with www. but has no protocol
                 const href = cleanUrl.startsWith('www.') ? `https://${cleanUrl}` : cleanUrl;
                 const label = `Link ${index + 1}`;
-                return `<a href="${href}" target="_blank" style="color: #0ea5a4; text-decoration: none;">${label}</a>`;
+                return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" style="color: #0ea5a4; text-decoration: none;">${label}</a>`;
             });
 
             return links.join(' • ');
         }
 
-        // Check user's country location
-        async function checkUserLocation() {
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                const data = await response.json();
-                const country = data.country_code;
+        // Member-supplied strings are interpolated into innerHTML below, so every
+        // value must be escaped before it is rendered.
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
-                console.log('User country:', country);
+        // Fields the directory is allowed to expose for each privacy level.
+        // Anything not listed here is never copied out of the Firestore document,
+        // so it cannot reach the rendered table or the in-memory search index.
+        // NOTE: this is a client-side mitigation. The raw documents are still in
+        // the Firestore response until the server-side projection lands.
+        const DIRECTORY_FIELDS = {
+            full: ['name', 'city', 'state', 'nativePlaceSelf', 'profession', 'profileUrl', 'email', 'phone'],
+            limited: ['name', 'state']
+        };
 
-                if (country !== 'US' && country !== 'CA') {
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                console.error('Error checking location:', error);
-                // If geolocation check fails, allow access (fail open)
-                return true;
+        function projectForDirectory(source, extra) {
+            const level = source.privacyLevel === 'limited' ? 'limited' : 'full';
+            const row = { privacyLevel: level };
+            for (const field of DIRECTORY_FIELDS[level]) {
+                if (source[field] !== undefined) row[field] = source[field];
             }
+            return Object.assign(row, extra);
         }
 
         // Check authentication state
@@ -476,37 +486,38 @@
 
             // Check email verification
             if (!user.emailVerified) {
-                document.getElementById('dashboard-content').style.display = 'none';
-                document.getElementById('dashboard-content').insertAdjacentHTML('beforebegin', `
+                const main = document.querySelector('section.section');
+                if (main) {
+                    main.innerHTML = `
                     <div style="text-align: center; padding: 60px 20px; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #d9a441; font-size: 28px; margin-bottom: 16px;">📧 Email Verification Required</h2>
+                        <h2 style="color: #d9a441; font-size: 28px; margin-bottom: 16px;">Email verification required</h2>
                         <p style="color: #cfe6f1; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
                             Please verify your email address to continue. We sent a verification link to:
                         </p>
-                        <p style="color: #0ea5a4; font-size: 18px; font-weight: 600; margin-bottom: 24px;">
-                            ${user.email}
-                        </p>
+                        <p id="verify-email-address" style="color: #0ea5a4; font-size: 18px; font-weight: 600; margin-bottom: 24px;"></p>
                         <p style="color: #98b3c2; font-size: 14px; margin-bottom: 32px;">
                             Check your inbox (and spam/junk folder) for the verification email.<br>
                             After verifying, refresh this page or login again.
                         </p>
-                        <button onclick="location.reload()" style="background: #0ea5a4; color: #072025; border: none; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; margin-right: 12px;">
-                            ✓ I Verified - Refresh Page
+                        <button id="verify-reload" style="background: #0ea5a4; color: #072025; border: none; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; margin-right: 12px;">
+                            I verified &mdash; refresh page
                         </button>
-                        <button onclick="firebase.auth().currentUser.sendEmailVerification().then(() => alert('Verification email sent! Check your inbox.')).catch(err => alert('Error: ' + err.message))" style="background: transparent; color: #0ea5a4; border: 1px solid #0ea5a4; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer;">
-                            📧 Resend Verification Email
+                        <button id="verify-resend" style="background: transparent; color: #0ea5a4; border: 1px solid #0ea5a4; padding: 12px 32px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer;">
+                            Resend verification email
                         </button>
                     </div>
-                `);
-                return;
-            }
-
-            // Check if user is accessing from allowed location
-            const isAllowedLocation = await checkUserLocation();
-            if (!isAllowedLocation) {
-                await auth.signOut();
-                alert('Access is restricted to users in the United States and Canada only.');
-                window.location.href = 'membership.html';
+                `;
+                    document.getElementById('verify-email-address').textContent = user.email;
+                    document.getElementById('verify-reload').addEventListener('click', () => location.reload());
+                    document.getElementById('verify-resend').addEventListener('click', async () => {
+                        try {
+                            await user.sendEmailVerification();
+                            alert('Verification email sent. Please check your inbox.');
+                        } catch (error) {
+                            alert('Error sending verification email: ' + error.message);
+                        }
+                    });
+                }
                 return;
             }
 
@@ -637,10 +648,11 @@
                 allMembers = [];
 
                 // Track unique emails to prevent duplicates
-                const uniqueEmails = new Map(); // email -> member data
+                const uniqueEmails = new Map(); // email -> { id, data }
                 const registeredEmails = new Set();
 
-                // First pass: collect unique members by email (most recent submission wins)
+                // First pass: collect unique members by email (most recent submission wins).
+                // The raw document stays local to this loop and is never pushed to allMembers.
                 for (const doc of snapshot.docs) {
                     const data = doc.data();
                     if (data.email && data.userId) {
@@ -649,37 +661,38 @@
 
                         // Only add if this email hasn't been added yet, or if this is a more recent submission
                         const existing = uniqueEmails.get(emailKey);
-                        if (!existing || (data.submittedAt && existing.submittedAt && data.submittedAt.toMillis() > existing.submittedAt.toMillis())) {
-                            uniqueEmails.set(emailKey, { id: doc.id, ...data });
+                        if (!existing || (data.submittedAt && existing.data.submittedAt && data.submittedAt.toMillis() > existing.data.submittedAt.toMillis())) {
+                            uniqueEmails.set(emailKey, { id: doc.id, data: data });
                         }
                     }
                 }
 
-                // Add unique members to allMembers array
-                for (const member of uniqueEmails.values()) {
-                    allMembers.push(member);
+                // Second pass: project each record down to the fields its privacy
+                // level permits before it enters the directory.
+                for (const entry of uniqueEmails.values()) {
+                    const member = entry.data;
+                    allMembers.push(projectForDirectory(member, { id: entry.id }));
 
                     // Check if spouse has email and doesn't have their own account
                     if (member.spouseEmail && member.spouseEmail.trim() !== '') {
                         const spouseEmailLower = member.spouseEmail.toLowerCase().trim();
                         if (!registeredEmails.has(spouseEmailLower)) {
-                            // Add spouse as a separate entry with a special flag
-                            allMembers.push({
-                                id: member.id + '_spouse',
+                            // Add spouse as a separate entry, inheriting the member's privacy level
+                            allMembers.push(projectForDirectory({
                                 name: member.spouseName || 'Spouse of ' + (member.name || 'Member'),
                                 email: member.spouseEmail,
                                 phone: member.spousePhone,
                                 profession: member.spouseProfession || '—',
                                 profileUrl: member.spouseProfileUrl,
                                 nativePlaceSelf: member.nativePlaceSpouse,
-                                street: member.street,
                                 city: member.city,
                                 state: member.state,
-                                zip: member.zip,
-                                privacyLevel: member.privacyLevel, // Inherit privacy level from main member
+                                privacyLevel: member.privacyLevel
+                            }, {
+                                id: entry.id + '_spouse',
                                 isSpouseEntry: true,
                                 linkedToMember: member.name
-                            });
+                            }));
                         }
                     }
                 }
@@ -723,8 +736,8 @@
                 if (privacyLevel === 'limited') {
                     // Limited profile: only show name and state
                     return `<tr style="border-bottom: 1px solid #143244;">
-                      <td style="padding: 16px 8px; font-size: 15px;">${m.name || '—'}</td>
-                      <td style="padding: 16px 8px; font-size: 15px;">${m.state || '—'}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(m.name || '—')}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(m.state || '—')}</td>
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Private</td>
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Limited Profile</td>
                       <td style="padding: 16px 8px; font-size: 15px; color: #98b3c2; font-style: italic;">Private</td>
@@ -735,18 +748,18 @@
                     const location = [m.city, m.state].filter(Boolean).join(', ') || '—';
                     const nativePlace = m.nativePlaceSelf || '—';
                     const contactParts = [];
-                    if (m.email) contactParts.push(`<a href="mailto:${m.email}" style="color: #0ea5a4; text-decoration: none;">${m.email}</a>`);
-                    if (m.phone) contactParts.push(m.phone);
+                    if (m.email) contactParts.push(`<a href="mailto:${encodeURIComponent(m.email)}" style="color: #0ea5a4; text-decoration: none;">${escapeHtml(m.email)}</a>`);
+                    if (m.phone) contactParts.push(escapeHtml(m.phone));
                     const contact = contactParts.join(' • ') || '—';
 
                     // Format profile URL(s) as clickable link(s)
                     const profileUrlDisplay = formatUrls(m.profileUrl);
 
                     return `<tr style="border-bottom: 1px solid #143244;">
-                      <td style="padding: 16px 8px; font-size: 15px;">${m.name || '—'}</td>
-                      <td style="padding: 16px 8px; font-size: 15px;">${location}</td>
-                      <td style="padding: 16px 8px; font-size: 15px;">${nativePlace}</td>
-                      <td style="padding: 16px 8px; font-size: 15px;">${m.profession || '—'}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(m.name || '—')}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(location)}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(nativePlace)}</td>
+                      <td style="padding: 16px 8px; font-size: 15px;">${escapeHtml(m.profession || '—')}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${profileUrlDisplay}</td>
                       <td style="padding: 16px 8px; font-size: 15px;">${contact}</td>
                     </tr>`;

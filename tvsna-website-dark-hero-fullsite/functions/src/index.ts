@@ -7,7 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 import { setGlobalOptions } from "firebase-functions";
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, CallableRequest, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
@@ -42,16 +42,43 @@ const gmailTransporter = nodemailer.createTransport({
     },
 });
 
-// Send approval email - allows authenticated users to trigger via client
+// Administrators permitted to call the privileged callables below. This mirrors
+// isAdmin() in firestore.rules; both move to custom claims in a later phase.
+const ADMIN_EMAILS = [
+    "vikramkanagaraj@gmail.com",
+    "vokkaligasangam@gmail.com",
+    "sureshgowder@gmail.com",
+    "deeppak.kambarayar@gmail.com",
+    "krishnakumarmuthian@gmail.com",
+    "muru100@gmail.com",
+    "vanithavijay@gmail.com",
+    "raghuraja@gmail.com",
+    "jegan.thiru@gmail.com",
+    "skparamasivam@gmail.com",
+    "drnandeesh@hotmail.com",
+    "poornisaran@gmail.com",
+    "sivasrees@gmail.com",
+    "thirumudi@gmail.com",
+];
+
+function requireAdmin(request: CallableRequest): void {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Sign in required.");
+    }
+    const email = (request.auth.token.email || "").toLowerCase();
+    if (!request.auth.token.email_verified || !ADMIN_EMAILS.includes(email)) {
+        logger.warn(`Rejected privileged call from ${email || "unknown"}`);
+        throw new HttpsError("permission-denied", "Administrator access required.");
+    }
+}
+
+// Send approval email. Admin-only: this function sends VMSNA-branded mail to an
+// arbitrary address, so an unauthenticated caller could use it as an open relay.
 export const sendApprovalEmail = onCall({
     region: "us-central1",
-    invoker: "public",
     secrets: ["GMAIL_APP_PASSWORD"]
 }, async (request) => {
-    // Auth check temporarily disabled for testing
-    // if (!request.auth) {
-    //     throw new Error("Unauthenticated request");
-    // }
+    requireAdmin(request);
 
     const { email, name } = request.data;
 
@@ -434,13 +461,15 @@ export const checkVerifiedUsers = onSchedule(
 
 // Get user's email verification status (for admin panel)
 export const getUserVerificationStatus = onCall({
-    region: "us-central1",
-    invoker: "public"
+    region: "us-central1"
 }, async (request) => {
+    // Admin-only: this returns another user's email address for any UID.
+    requireAdmin(request);
+
     const { userId } = request.data;
 
     if (!userId) {
-        throw new Error("Missing userId");
+        throw new HttpsError("invalid-argument", "Missing userId");
     }
 
     try {

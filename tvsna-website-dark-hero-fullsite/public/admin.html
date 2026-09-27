@@ -113,6 +113,17 @@
         const auth = firebase.auth();
         const functions = firebase.functions();
 
+        // Applicant-supplied strings are interpolated into innerHTML below, so every
+        // value must be escaped before it is rendered.
+        function escapeHtml(value) {
+            return String(value === null || value === undefined ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // List of admin emails (update this with your admin emails)
         const ADMIN_EMAILS = [
             'vikramkanagaraj@gmail.com',
@@ -212,67 +223,67 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px;">
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Name</div>
-                        <div style="color: #cfe6f1; font-size: 15px; font-weight: 500;">${data.name || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px; font-weight: 500;">${escapeHtml(data.name || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Email</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.email || '—'}${verificationBadge}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.email || '—')}${verificationBadge}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Phone</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.phone || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.phone || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Street</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.street || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.street || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">City</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.city || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.city || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">State</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.state || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.state || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Zip Code</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.zip || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.zip || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Profession</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.profession || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.profession || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Native Place (Self)</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.nativePlaceSelf || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.nativePlaceSelf || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Name</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseName || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.spouseName || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Email</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseEmail || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.spouseEmail || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Phone</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.spousePhone || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.spousePhone || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Spouse Profession</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.spouseProfession || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.spouseProfession || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Native Place (Spouse)</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.nativePlaceSpouse || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.nativePlaceSpouse || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Children Details</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.childrenDetails || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.childrenDetails || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Privacy Level</div>
-                        <div style="color: #cfe6f1; font-size: 15px;">${data.privacyLevel || '—'}</div>
+                        <div style="color: #cfe6f1; font-size: 15px;">${escapeHtml(data.privacyLevel || '—')}</div>
                     </div>
                     <div>
                         <div style="color: #98b3c2; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Submitted</div>
@@ -281,16 +292,24 @@
                 </div>
                 
                 <div style="display: flex; gap: 12px; margin-top: 16px;">
-                    <button onclick="approveApplication('${docId}', '${data.email}', '${data.name}')" 
+                    <button data-action="approve"
                         style="background: #0ea5a4; color: #072025; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer;">
                         ✓ Approve
                     </button>
-                    <button onclick="rejectApplication('${docId}')" 
+                    <button data-action="reject"
                         style="background: transparent; color: #e74c3c; border: 1px solid #e74c3c; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer;">
                         ✗ Reject
                     </button>
                 </div>
             `;
+
+            // Listeners rather than inline onclick: applicant names are untrusted
+            // input, and a name containing an apostrophe both broke the button and
+            // allowed script injection.
+            card.querySelector('[data-action="approve"]')
+                .addEventListener('click', () => approveApplication(docId, data.email, data.name));
+            card.querySelector('[data-action="reject"]')
+                .addEventListener('click', () => rejectApplication(docId));
 
             return card;
         }
@@ -315,25 +334,11 @@
                     approvedBy: adminEmail
                 });
 
-                // Call cloud function to send approval email
-                try {
-                    console.log('About to call sendApprovalEmail with:', { email, name });
-                    console.log('Functions object:', functions);
-                    const sendEmail = functions.httpsCallable('sendApprovalEmail');
-                    console.log('Callable function created:', sendEmail);
-                    const result = await sendEmail({ email, name });
-                    console.log('Email function result:', result);
-                    alert(`✅ ${name} has been approved! Approval email sent.`);
-                } catch (emailError) {
-                    console.error('Email sending error:', emailError);
-                    console.error('Error code:', emailError.code);
-                    console.error('Error message:', emailError.message);
-                    console.error('Error details:', emailError.details);
-                    console.error('Full error object:', JSON.stringify(emailError, null, 2));
-                    console.error('Stack trace:', emailError.stack);
-                    console.error('HTTP error response:', emailError.httpErrorCode);
-                    alert(`✅ ${name} has been approved!\n\n⚠️ However, the approval email could not be sent automatically.\n\nPlease manually email ${email} to notify them of their approval with dashboard access at: https://vmsna.web.app/dashboard.html`);
-                }
+                // The approval email is sent by the sendApprovalEmailOnStatusChange
+                // Firestore trigger, which fires on the status write above. Calling
+                // sendApprovalEmail from here as well sent every approved member two
+                // identical emails.
+                alert(`${name} has been approved. The approval email is on its way to ${email}.`);
 
                 // Wait for animation, then reload
                 setTimeout(() => loadPendingApplications(), 300);

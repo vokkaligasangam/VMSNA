@@ -326,26 +326,6 @@
       }
     });
 
-    // Check user's country location
-    async function checkUserLocation() {
-      try {
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        const country = data.country_code; // Returns 2-letter country code like 'US', 'CA'
-
-        console.log('User country:', country);
-
-        if (country !== 'US' && country !== 'CA') {
-          return false;
-        }
-        return true;
-      } catch (error) {
-        console.error('Error checking location:', error);
-        // If geolocation check fails, allow login (fail open)
-        return true;
-      }
-    }
-
     // Password reset handler
     document.getElementById('forgot-password-link').addEventListener('click', async e => {
       e.preventDefault();
@@ -426,13 +406,6 @@
       const password = document.getElementById('login-pass').value.trim();
 
       try {
-        // Check location first
-        const isAllowedLocation = await checkUserLocation();
-        if (!isAllowedLocation) {
-          alert('Access is restricted to users in the United States and Canada only.');
-          return;
-        }
-
         const userCredential = await auth.signInWithEmailAndPassword(username, password);
 
         // Check if email is verified
