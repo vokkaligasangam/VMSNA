@@ -143,6 +143,31 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Mentorship board. Member-to-member, so it uses the same access oracle as
+    // the directory. A member owns their own entries; the contact address is
+    // whatever they chose to put here, not their directory record, so sharing
+    // it is an explicit act rather than a side effect of posting.
+    match /mentorship/{docId} {
+      allow create: if hasDirectoryAccess()
+                    && request.resource.data.uid == request.auth.uid
+                    && validMentorship();
+      allow read: if hasDirectoryAccess();
+      allow update: if signedIn() && resource.data.uid == request.auth.uid && validMentorship();
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+    }
+
+    function validMentorship() {
+      return request.resource.data.kind in ['offer', 'request']
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.name.size() <= 120
+             && request.resource.data.field is string
+             && request.resource.data.field.size() > 0
+             && request.resource.data.field.size() <= 120
+             && request.resource.data.detail.size() <= 1000
+             && request.resource.data.keys().size() <= 10;
+    }
+
     // Payment records, written by the Stripe webhook. A member may see their
     // own; nothing here is client-writable, because a client that could write
     // a payment could grant itself a membership.

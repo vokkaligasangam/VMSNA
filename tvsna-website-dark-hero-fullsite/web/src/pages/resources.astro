@@ -1,0 +1,245 @@
+---
+/*
+  A note on what "members" means on this page.
+
+  Resource cards are static editorial content from git, so the titles and
+  summaries of member resources are prerendered and readable by anyone who
+  views source. The gate decides what is *shown*, not what is *served*.
+
+  That is fine for what lives here — "Scholarship programme", "Running a
+  chapter event" — but it means a card's title and summary must never
+  themselves be confidential. Anything genuinely restricted belongs behind a
+  `url` pointing at access-controlled storage, not in this frontmatter.
+
+  Contrast with the member directory and the mentorship board, which hold
+  personal data: neither is ever prerendered, and both are enforced by
+  Firestore rules rather than by CSS.
+*/
+import { getCollection } from 'astro:content';
+import PageLayout from '../layouts/PageLayout.astro';
+
+const all = (await getCollection('resources')).filter((r) => !r.data.draft);
+const sorted = all.sort((a, b) => a.data.order - b.data.order);
+
+const publicOnes = sorted.filter((r) => r.data.visibility === 'public');
+const memberOnes = sorted.filter((r) => r.data.visibility === 'members');
+
+const categories = [...new Set(memberOnes.map((r) => r.data.category))];
+
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+---
+
+<PageLayout
+  title="Resources"
+  kicker="For members"
+  lead="Scholarships, language and youth programmes, practical guides, and the governance documents."
+>
+  <section class="section">
+    <div class="container">
+      {
+        publicOnes.length > 0 && (
+          <div class="open">
+            <h2>Open to everyone</h2>
+            <ul class="cards">
+              {publicOnes.map((r) => (
+                <li class="card">
+                  <p class="cat">{r.data.category}</p>
+                  <h3>
+                    {r.data.url ? (
+                      <a href={r.data.url} rel="noopener">{r.data.title}</a>
+                    ) : (
+                      r.data.title
+                    )}
+                  </h3>
+                  <p class="summary">{r.data.summary}</p>
+                  <p class="updated">Updated {fmt(r.data.updated)}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span><span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="pitch">
+          <h2>{memberOnes.length} more resources for members</h2>
+          <p>
+            Scholarship guidance, Tamil class materials, the practical notes
+            members have written for families arriving in North America, and the
+            chapter toolkit.
+          </p>
+          <ul class="pitch__cats">
+            {categories.map((c) => <li>{c}</li>)}
+          </ul>
+          <p class="pitch__cta">
+            <a class="btn btn--primary" href="/join/">Apply for membership</a>
+            <a class="btn btn--ghost" href="/login/">I already have an account</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="pending">
+        <div class="pitch">
+          <h2>Once your application is approved</h2>
+          <p>
+            The member resources open up as soon as a committee member has
+            reviewed your application. We will email you.
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="unpaid">
+        <div class="pitch">
+          <h2>Activate your membership to see these</h2>
+          <p>Your application is approved. One step left.</p>
+          <p class="pitch__cta">
+            <a class="btn btn--primary" href="/membership/activate/">Activate membership</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="member">
+        {
+          categories.map((category) => (
+            <section class="group">
+              <h2>{category}</h2>
+              <ul class="cards">
+                {memberOnes
+                  .filter((r) => r.data.category === category)
+                  .map((r) => (
+                    <li class="card">
+                      <h3>
+                        {r.data.url ? (
+                          <a href={r.data.url} rel="noopener">{r.data.title}</a>
+                        ) : (
+                          r.data.title
+                        )}
+                      </h3>
+                      <p class="summary">{r.data.summary}</p>
+                      <p class="updated">Updated {fmt(r.data.updated)}</p>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          ))
+        }
+        <p class="ask">
+          Something missing? <a href="/contact/">Tell us what would help</a> and
+          we will add it.
+        </p>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth } from '../lib/authStore';
+  startAuth();
+</script>
+
+<style>
+  .open {
+    margin-bottom: var(--s-7);
+  }
+
+  .open h2,
+  .group h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-4);
+  }
+
+  .group + .group {
+    margin-top: var(--s-7);
+  }
+
+  .cards {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  }
+
+  .card h3 {
+    font-size: var(--t-lg);
+  }
+
+  .card h3 a {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .card h3 a:hover {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  .cat {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--terra-dark);
+    margin-bottom: var(--s-2);
+  }
+
+  .summary {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+  }
+
+  .updated {
+    margin-top: var(--s-3);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .pitch {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 58ch;
+  }
+
+  .pitch h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .pitch__cats {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+
+  .pitch__cats li {
+    font-size: var(--t-xs);
+    background: var(--surface-sunk);
+    border-radius: 999px;
+    padding: 3px var(--s-3);
+    color: var(--text-body);
+  }
+
+  .pitch__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+
+  .ask {
+    margin-top: var(--s-7);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

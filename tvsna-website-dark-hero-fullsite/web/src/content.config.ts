@@ -67,4 +67,61 @@ const officers = defineCollection({
   }),
 });
 
-export const collections = { events, chapters, officers };
+/**
+ * Member resources — documents, guides and links.
+ *
+ * Only metadata lives here. A card's title and summary are prerendered into
+ * the page, so they are readable by anyone viewing source even when the card
+ * is marked members-only: visibility hides the card, not the text in it and
+ * not the target. Anything genuinely confidential belongs behind a url
+ * pointing at access-controlled storage, never in this frontmatter.
+ */
+const resources = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/resources' }),
+  schema: z.object({
+    title: z.string(),
+    category: z.enum([
+      'Scholarships',
+      'Youth and language',
+      'Starting out in North America',
+      'Governance',
+      'Chapter toolkit',
+    ]),
+    summary: z.string().max(280),
+    url: z.string().optional(),
+    /** Public cards appear to everyone; members cards only to signed-in members. */
+    visibility: z.enum(['public', 'members']).default('members'),
+    updated: z.coerce.date(),
+    order: z.number().int().default(100),
+    draft: z.boolean().default(false),
+  }),
+});
+
+/**
+ * Photo albums. Public — galleries are not gated.
+ *
+ * There is deliberately no members-only option. Images are optimised at build
+ * time and served as ordinary static files, so a gate would hide the link
+ * while leaving the file fetchable by URL. Offering a privacy control that
+ * does not actually protect anything is worse than not offering it. Genuinely
+ * restricted photographs need Firebase Storage with security rules, which is
+ * a separate piece of work.
+ */
+const albums = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/albums' }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      date: z.coerce.date(),
+      location: z.string(),
+      chapter: z.string().default('National'),
+      summary: z.string().max(280),
+      cover: image().optional(),
+      photos: z
+        .array(z.object({ src: image(), caption: z.string().max(160).optional() }))
+        .default([]),
+      draft: z.boolean().default(false),
+    }),
+});
+
+export const collections = { events, chapters, officers, resources, albums };

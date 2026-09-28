@@ -1,61 +1,171 @@
 ---
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
 import PageLayout from '../layouts/PageLayout.astro';
+
+const albums = (await getCollection('albums'))
+  .filter((a) => !a.data.draft)
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const publicAlbums = albums;
+
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 ---
 
 <PageLayout
   title="Media"
-  kicker="Albums, video and publications"
-  lead="Photographs and recordings from chapter events and national programmes."
+  kicker="Albums and publications"
+  lead="Photographs from chapter gatherings and national programmes."
 >
   <section class="section">
     <div class="container">
-      <div class="soon">
-        <h2>Galleries are being organised</h2>
-        <p>
-          We are collecting photographs from chapter events and the 2026
-          convention, and setting up albums here. Full event albums will sit
-          behind member sign-in, because they show families and children; a
-          public selection will be available to everyone.
-        </p>
-        <p>
-          Have photographs from a VMSNA event?
-          <a href="/contact/?subject=Event%20photographs">Send them to us</a>.
-        </p>
-      </div>
+      {
+        publicAlbums.length > 0 ? (
+          <ul class="albums">
+            {publicAlbums.map((a) => (
+              <li class="album">
+                <a href={`/media/${a.id}/`}>
+                  <div class="album__cover">
+                    {a.data.cover ? (
+                      <Image src={a.data.cover} alt="" widths={[400, 800]} sizes="(min-width: 48rem) 22rem, 90vw" />
+                    ) : (
+                      <span class="album__placeholder" aria-hidden="true" />
+                    )}
+                  </div>
+                  <h2>{a.data.title}</h2>
+                  <p class="album__meta">
+                    {fmt(a.data.date)} &middot; {a.data.location}
+                  </p>
+                  <p class="album__summary">{a.data.summary}</p>
+                  <p class="album__count">
+                    {a.data.photos.length} {a.data.photos.length === 1 ? 'photograph' : 'photographs'}
+                  </p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="empty">
+            <h2>The albums are being put together</h2>
+            <p>
+              We are collecting photographs from the chapters and from the 2026
+              convention. They will appear here as albums.
+            </p>
+            <p>
+              Have photographs from a VMSNA event?
+              <a href="/contact/?subject=Event%20photographs"> Send them to us</a> —
+              please make sure anyone clearly identifiable is happy to be
+              included, particularly children.
+            </p>
+          </div>
+        )
+      }
 
-      <div class="planned">
-        <div>
-          <h3>Event albums</h3>
-          <p>Photo stories from chapter gatherings and national programmes.</p>
-        </div>
-        <div>
-          <h3>Video</h3>
-          <p>Performances, interviews and community highlights.</p>
-        </div>
-        <div>
-          <h3>Publications</h3>
-          <p>Newsletters, annual reports and the committee minutes.</p>
-        </div>
-      </div>
+
+      <section class="other">
+        <h2>Publications</h2>
+        <p>
+          Newsletters, annual reports and committee minutes are kept with the
+          <a href="/resources/">member resources</a>.
+        </p>
+      </section>
     </div>
   </section>
 </PageLayout>
 
+
 <style>
-  .soon {
+  .albums {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+  }
+
+  .album a {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .album__cover {
+    aspect-ratio: 3 / 2;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-sunk);
+    margin-bottom: var(--s-4);
+  }
+
+  .album__cover :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .album__placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #e8d9be 0%, #c9b894 100%);
+  }
+
+  .album h2,
+  .album h3 {
+    font-size: var(--t-lg);
+  }
+
+  .album a:hover h2,
+  .album a:hover h3 {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  .album__meta {
+    margin-top: var(--s-1);
+    font-size: var(--t-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .album__summary {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+  }
+
+  .album__count {
+    margin-top: var(--s-2);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .empty {
     background: var(--surface-sunk);
     border-radius: var(--radius-lg);
     padding: var(--s-6);
     max-width: 62ch;
   }
-  .soon h2 { font-size: var(--t-xl); margin-bottom: var(--s-3); }
-  .soon p + p { margin-top: var(--s-3); }
-  .planned {
-    display: grid;
-    gap: var(--s-6);
-    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
-    margin-top: var(--s-7);
+
+  .empty h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
   }
-  .planned h3 { font-size: var(--t-lg); margin-bottom: var(--s-2); }
-  .planned p { font-size: var(--t-sm); color: var(--text-muted); }
+
+  .empty p + p {
+    margin-top: var(--s-3);
+  }
+
+
+  .other {
+    margin-top: var(--s-8);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--line);
+  }
+
+  .other h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
 </style>

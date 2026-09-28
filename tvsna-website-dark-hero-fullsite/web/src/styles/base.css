@@ -119,6 +119,12 @@ a:hover {
   }
 }
 
+:lang(ta),
+[lang="ta"] {
+  font-family: var(--font-tamil);
+  line-height: 1.75;
+}
+
 /* Utilities */
 
 .container {

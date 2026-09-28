@@ -40,6 +40,8 @@ export const footerNav = [
       { label: 'Become a member', href: '/join/' },
       { label: 'Member log in', href: '/login/' },
       { label: 'Member directory', href: '/directory/' },
+      { label: 'Resources', href: '/resources/' },
+      { label: 'Mentorship', href: '/mentorship/' },
     ],
   },
   {
