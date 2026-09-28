@@ -1,0 +1,120 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+import { site } from '../config/site';
+
+const updated = 'September 2026';
+---
+
+<PageLayout
+  title="Privacy"
+  kicker="How we handle your information"
+  lead="What VMSNA collects, who can see it, and how to have it removed."
+>
+  <section class="section">
+    <div class="container container-narrow prose">
+      <p class="updated">Last updated {updated}</p>
+
+      <h2>What we collect</h2>
+      <p>
+        When you apply for membership we collect your name, contact details,
+        address, native place, profession, and the same for your spouse and
+        children if you choose to provide them. When you submit a support
+        request or contact form, we collect what you write in it.
+      </p>
+
+      <h2>Who can see it</h2>
+      <p>
+        Your membership application is visible to the committee members who
+        review it. In the member directory you choose between:
+      </p>
+      <ul>
+        <li>
+          <strong>Full profile</strong> — other approved members can see your
+          name, city and state, native place, profession and contact details.
+        </li>
+        <li>
+          <strong>Limited profile</strong> — other members see only your name
+          and state.
+        </li>
+      </ul>
+      <p>
+        Your street address, postcode and any details about your children are
+        never shown in the directory, at either setting. The directory is
+        available only to approved members who are signed in; it is not public
+        and it is not indexed by search engines.
+      </p>
+
+      <h2>Support requests</h2>
+      <p>
+        Education, medical, employment and other assistance requests are read
+        only by the committee members who handle them. They are not visible to
+        other members and are not published. You do not need an account to
+        submit one.
+      </p>
+
+      <h2>Payments</h2>
+      <p>
+        Membership and donation payments are processed by Stripe. Card details
+        are entered on Stripe's own systems and never reach vmsna.org. We store
+        a record of what was paid and when, not your card number.
+      </p>
+
+      <h2>Email</h2>
+      <p>
+        We email you about your application, your membership, and the events and
+        announcements you have opted into. We do not sell or share your details
+        with anyone outside VMSNA.
+      </p>
+
+      <h2>Changing or deleting your information</h2>
+      <p>
+        You can edit your profile and change your directory privacy setting at
+        any time from your account. You can delete your account yourself, which
+        removes your membership record and your directory entry. Some records —
+        payment history, for example — are retained where we are required to
+        keep them.
+      </p>
+      <p>
+        To ask a question about your data, or to have something removed, write
+        to <a href={`mailto:${site.email}`}>{site.email}</a>.
+      </p>
+
+      <h2>Children</h2>
+      <p>
+        Where members list children as part of a family membership, those
+        details are visible only to the reviewing committee and are never shown
+        in the directory. Photographs that identify children are kept behind
+        member sign-in rather than published publicly.
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .updated {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--s-6);
+  }
+
+  .prose h2 {
+    font-size: var(--t-xl);
+    margin-block: var(--s-6) var(--s-3);
+  }
+
+  .prose h2:first-of-type {
+    margin-top: 0;
+  }
+
+  .prose p + p,
+  .prose ul + p {
+    margin-top: var(--s-4);
+  }
+
+  .prose ul {
+    margin: var(--s-3) 0 0;
+    padding-left: var(--s-5);
+    display: grid;
+    gap: var(--s-2);
+  }
+</style>

@@ -13,7 +13,7 @@ import PageLayout from '../layouts/PageLayout.astro';
         <div class="card opt">
           <h2>One-time</h2>
           <p>Give any amount, once. Every dollar goes to programmes and assistance.</p>
-          <a class="btn btn--primary" href="/donate/give/?type=once">Give once</a>
+          <a class="btn btn--primary" href="/contact/?subject=One-time%20donation">Arrange a gift</a>
         </div>
         <div class="card opt">
           <h2>Monthly</h2>
@@ -21,7 +21,7 @@ import PageLayout from '../layouts/PageLayout.astro';
             Become a sustaining supporter. Regular giving is what lets the
             committees commit to a scholarship before the money is in hand.
           </p>
-          <a class="btn btn--primary" href="/donate/give/?type=monthly">Give monthly</a>
+          <a class="btn btn--primary" href="/contact/?subject=Monthly%20giving">Arrange monthly giving</a>
         </div>
         <div class="card opt">
           <h2>Sponsor a programme</h2>
@@ -32,6 +32,11 @@ import PageLayout from '../layouts/PageLayout.astro';
           <a class="btn btn--ghost" href="/contact/?subject=Sponsorship">Talk to us</a>
         </div>
       </div>
+
+      <p class="interim">
+        Online card giving is being set up and will appear here shortly. Until then,
+        get in touch and a member of the committee will arrange it with you directly.
+      </p>
 
       <div class="tax">
         <h2>Tax-deductible in the United States</h2>
@@ -77,6 +82,13 @@ import PageLayout from '../layouts/PageLayout.astro';
   .opt p {
     font-size: var(--t-sm);
     flex: 1;
+  }
+
+  .interim {
+    margin-top: var(--s-5);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    max-width: 58ch;
   }
 
   .tax {
