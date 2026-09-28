@@ -1,6 +1,6 @@
 ---
 tier: advisor
-role: "Advisory Committee"
+role: "Executive Advisory Committee"
 order: 1
 name: "Vijay Dasappa"
 ---

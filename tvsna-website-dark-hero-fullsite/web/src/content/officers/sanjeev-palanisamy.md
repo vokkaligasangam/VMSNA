@@ -1,6 +1,6 @@
 ---
 tier: advisor
-role: "Advisory Committee"
+role: "Executive Advisory Committee"
 order: 6
 name: "Sanjeev Palanisamy"
 ---
