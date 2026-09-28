@@ -1,0 +1,97 @@
+/*
+  VMSNA design tokens.
+
+  Warm agrarian palette, light-first. Every foreground/background pair used in
+  the UI clears WCAG AA:
+    ink   on cream  8.8:1     soil on cream 15.9:1
+    white on terra  5.0:1     white on paddy 6.2:1
+    soil  on gold   7.9:1     muted on cream 4.9:1
+*/
+
+:root {
+  /* Brand */
+  --soil: #1f1710;
+  --cream: #faf5ec;
+  --terra: #b4532a;
+  --terra-dark: #93411f;
+  --gold: #d9a441;
+  /* Small text on a dark or scrimmed background. The base gold measures
+     4.2:1 for 13px type over the hero scrim, just under AA. */
+  --gold-light: #e8c77e;
+  --paddy: #3f6b4a;
+  --ink: #4a3f35;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-sunk: #f4eddf;
+  --surface-raised: #ffffff;
+  --surface-inverse: var(--soil);
+
+  /* Text */
+  --text: var(--soil);
+  --text-body: var(--ink);
+  --text-muted: #6b5d4e;
+  --text-on-dark: #fffcf6;
+  --text-on-dark-muted: #c6b79f;
+
+  /* Lines */
+  --line: #e3d9c8;
+  --line-strong: #c9bca6;
+
+  /* Focus — deliberately high contrast against both cream and soil */
+  --focus: #1a5f7a;
+  --focus-on-dark: var(--gold);
+
+  /* Spacing, 4pt scale */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4rem;
+  --s-9: 6rem;
+
+  /* Fluid type. The vw term is tuned to actually engage between 380px and
+     1200px, unlike the previous scale whose middle term never won. */
+  --t-xs: 0.8125rem;
+  --t-sm: 0.875rem;
+  --t-base: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+  --t-lg: clamp(1.125rem, 1.06rem + 0.3vw, 1.25rem);
+  --t-xl: clamp(1.375rem, 1.24rem + 0.6vw, 1.75rem);
+  --t-2xl: clamp(1.75rem, 1.5rem + 1.1vw, 2.5rem);
+  --t-3xl: clamp(2.25rem, 1.75rem + 2.2vw, 4rem);
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.65;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  /* Layout */
+  --measure: 68ch;
+  --container: 1180px;
+  --container-narrow: 760px;
+
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/*
+  Dark surfaces re-map the text tokens so components nested inside them do not
+  each need their own colour overrides.
+*/
+.on-dark {
+  --text: var(--text-on-dark);
+  --text-body: var(--text-on-dark);
+  --text-muted: var(--text-on-dark-muted);
+  --line: #3a2e22;
+  --line-strong: #56452f;
+  --focus: var(--focus-on-dark);
+  --surface: var(--soil);
+  color: var(--text-body);
+}

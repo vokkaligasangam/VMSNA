@@ -1,0 +1,425 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FieldIllustration from '../components/home/FieldIllustration.astro';
+import { site } from '../config/site';
+
+const now = new Date();
+
+const published = (await getCollection('events')).filter((e) => !e.data.draft);
+const upcoming = published
+  .filter((e) => (e.data.end ?? e.data.start) >= now)
+  .sort((a, b) => a.data.start.getTime() - b.data.start.getTime())
+  .slice(0, 3);
+const recent = published
+  .filter((e) => (e.data.end ?? e.data.start) < now)
+  .sort((a, b) => b.data.start.getTime() - a.data.start.getTime())
+  .slice(0, 2);
+
+const chapters = (await getCollection('chapters')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+
+<BaseLayout
+  title="Vokkaliga Mahajana Sangam North America"
+  suffix={false}
+  description={site.description}
+>
+  <section class="hero">
+    <FieldIllustration />
+    <div class="hero__scrim"></div>
+    <div class="container hero__inner on-dark">
+      <p class="kicker">Tamil Nadu Vokkaligas in North America</p>
+      <h1>The fields we came from,<br />the families we are now</h1>
+      <p class="hero__lead">
+        Seven chapters across the United States, Canada and India — keeping our
+        language and heritage alive for the next generation, and standing behind
+        each other's families.
+      </p>
+      <div class="hero__cta">
+        <a class="btn btn--gold" href="/join/">Become a member</a>
+        <a class="btn btn--ghost" href="/about/">Our story</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="pillars">
+        <div>
+          <h2 class="pillar__h">Culture, taught</h2>
+          <p>
+            Language classes, arts and youth programmes so that children growing
+            up here know where their family comes from.
+          </p>
+        </div>
+        <div>
+          <h2 class="pillar__h">Families, connected</h2>
+          <p>
+            A directory of member families — professions, chapters and native
+            places — so nobody arrives in a new city knowing no one.
+          </p>
+        </div>
+        <div>
+          <h2 class="pillar__h">Members, supported</h2>
+          <p>
+            Education, medical and employment assistance for member families,
+            handled quietly and in confidence.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section mission">
+    <div class="container mission__inner">
+      <div>
+        <p class="kicker">Our mission</p>
+        <h2>Preserve the language and the heritage. Unite the families.</h2>
+      </div>
+      <div class="measure">
+        <p>
+          Vokkaligas — also known as Gowdas — are an agrarian community with deep
+          roots across southern India. VMSNA exists for the Tamil Nadu Vokkaliga
+          families who have made their homes across North America, and for the
+          ties they keep to the districts they came from.
+        </p>
+        <p class="mission__p">
+          We are a volunteer-run, non-profit community organisation. We are not a
+          religious body, and membership is open to every Tamil Nadu Vokkaliga
+          family regardless of faith or practice.
+        </p>
+        <p><a href="/about/">More about who we are</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="sec-head">
+        <h2>Events</h2>
+        <a href="/events/">All events</a>
+      </div>
+
+      {
+        upcoming.length > 0 ? (
+          <ul class="cards">
+            {upcoming.map((e) => (
+              <li class="card">
+                <p class="kicker">Upcoming</p>
+                <h3 class="card__h">
+                  <a href={`/events/${e.id}/`}>{e.data.title}</a>
+                </h3>
+                <p class="card__meta">
+                  {fmt(e.data.start)} &middot; {e.data.location}
+                </p>
+                <p class="card__body">{e.data.summary}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="empty">
+            <p class="empty__h">No events on the calendar just yet.</p>
+            <p>
+              Chapter gatherings are planned through the year. Members hear about
+              them first — <a href="/join/">join VMSNA</a> or{' '}
+              <a href="/contact/">ask your chapter lead</a> what is coming up.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        recent.length > 0 && (
+          <>
+            <h3 class="recent__h">Recently</h3>
+            <ul class="cards">
+              {recent.map((e) => (
+                <li class="card card--past">
+                  <h3 class="card__h">
+                    <a href={`/events/${e.id}/`}>{e.data.title}</a>
+                  </h3>
+                  <p class="card__meta">
+                    {fmt(e.data.start)} &middot; {e.data.location}
+                  </p>
+                  <p class="card__body">{e.data.summary}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="sec-head">
+        <h2>Chapters</h2>
+        <a href="/chapters/">Find yours</a>
+      </div>
+      <ul class="chips">
+        {
+          chapters.map((c) => (
+            <li>
+              <a href="/chapters/">
+                <span class="chip__name">{c.data.name}</span>
+                <span class="chip__regions">{c.data.regions.slice(0, 5).join(' · ')}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section class="join on-dark">
+    <div class="container join__inner">
+      <div>
+        <h2>Join the Sangam</h2>
+        <p>
+          Membership opens the family directory, mentorship and member events —
+          and funds the scholarships and assistance we provide to our own.
+        </p>
+      </div>
+      <div class="join__cta">
+        <a class="btn btn--gold" href="/join/">Become a member</a>
+        <a class="btn btn--ghost" href="/membership/">What you get</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    min-height: clamp(26rem, 62vh, 36rem);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /*
+    The scrim has to hold WCAG AA for the headline and lead wherever they wrap,
+    including over the pale sky at the top right of the illustration. At 34%
+    the weakest point measured 2.8:1; these stops keep the worst case near
+    4.9:1 for normal text and better for the headline.
+  */
+  .hero__scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      rgb(31 23 16 / 88%) 0%,
+      rgb(31 23 16 / 72%) 48%,
+      rgb(31 23 16 / 55%) 100%
+    );
+  }
+
+  .hero__inner {
+    position: relative;
+    padding-block: var(--s-8);
+  }
+
+  .hero h1 {
+    margin-block: var(--s-3) var(--s-4);
+    max-width: 18ch;
+  }
+
+  .hero__lead {
+    font-size: var(--t-lg);
+    line-height: var(--leading-snug);
+    max-width: 46ch;
+    color: #ede2ce;
+  }
+
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-6);
+  }
+
+  .pillars {
+    display: grid;
+    gap: var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  }
+
+  .pillar__h {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .pillar__h::before {
+    content: '';
+    display: block;
+    width: 2.25rem;
+    height: 3px;
+    background: var(--terra);
+    margin-bottom: var(--s-4);
+  }
+
+  .mission {
+    background: var(--surface-sunk);
+  }
+
+  .mission__inner {
+    display: grid;
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 52rem) {
+    .mission__inner {
+      grid-template-columns: 1fr 1.1fr;
+      gap: var(--s-8);
+    }
+  }
+
+  .mission__p {
+    margin-top: var(--s-4);
+  }
+
+  .mission h2 {
+    margin-top: var(--s-3);
+  }
+
+  .sec-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+    margin-bottom: var(--s-5);
+  }
+
+  .cards {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  }
+
+  .card__h {
+    font-size: var(--t-lg);
+    margin-block: var(--s-2);
+  }
+
+  .card__h a {
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .card__h a:hover {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  .card__meta {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .card__body {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+  }
+
+  .card--past {
+    background: transparent;
+    border-style: dashed;
+  }
+
+  .recent__h {
+    font-size: var(--t-lg);
+    margin-block: var(--s-6) var(--s-4);
+  }
+
+  .empty {
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 52ch;
+  }
+
+  .empty__h {
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+    margin-bottom: var(--s-2);
+  }
+
+  .chips {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  }
+
+  .chips a {
+    display: block;
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-decoration: none;
+  }
+
+  .chips a:hover {
+    border-color: var(--terra);
+  }
+
+  .chip__name {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+  }
+
+  .chip__regions {
+    display: block;
+    margin-top: var(--s-1);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .join {
+    background: var(--soil);
+    padding-block: var(--s-8);
+  }
+
+  .join__inner {
+    display: grid;
+    gap: var(--s-5);
+    align-items: center;
+  }
+
+  @media (min-width: 52rem) {
+    .join__inner {
+      grid-template-columns: 1.4fr auto;
+      gap: var(--s-7);
+    }
+  }
+
+  .join p {
+    margin-top: var(--s-3);
+    max-width: 52ch;
+    color: var(--text-on-dark-muted);
+  }
+
+  .join__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+</style>

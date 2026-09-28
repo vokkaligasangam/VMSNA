@@ -1,0 +1,23 @@
+Copy this into a new file named after the person, e.g. jane-doe.md
+
+---
+term: "2025-2027"
+tier: executive        # executive | office-bearer | committee-chair | chapter-lead | advisor
+role: "President"
+order: 1               # position within the tier
+name: "Full Name"
+nameTamil: ""          # optional
+city: "Dallas"
+state: "TX"
+country: US            # US | CA | IN
+nativePlace: "Village, District"
+profession: "What you do"
+contactRole: president@vmsna.org   # a routed alias, never a personal address
+linkedin: ""           # optional, full URL
+committees: []
+focus: ["Up to three focus areas"]
+bioShort: "Up to 280 characters. Shown on the leadership grid."
+quote: ""              # optional, up to 200 characters
+---
+
+The long biography goes here. Markdown works.

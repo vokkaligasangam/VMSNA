@@ -1,0 +1,241 @@
+---
+import Logo from '../brand/Logo.astro';
+import { primaryNav } from '../../config/site';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+---
+
+<header class="hdr">
+  <div class="container hdr__inner">
+    <a href="/" class="hdr__brand" aria-label="VMSNA home">
+      <Logo size={38} />
+    </a>
+
+    <!-- Desktop navigation -->
+    <nav class="hdr__desktop" aria-label="Main">
+      <ul class="navlist">
+        {
+          primaryNav.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="hdr__actions">
+        <a class="hdr__login" href="/login/">Member log in</a>
+        <a class="btn btn--primary btn--sm" href="/join/">Join VMSNA</a>
+      </div>
+    </nav>
+
+    <!--
+      Mobile navigation. A <details> element rather than a scripted drawer:
+      it needs no JavaScript, and the browser announces expanded/collapsed
+      state natively. The previous implementation opened a nine-item
+      non-wrapping row that was clipped by body{overflow-x:hidden}, leaving
+      links five onward unreachable on a phone.
+    -->
+    <details class="hdr__mobile">
+      <summary aria-label="Menu">
+        <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="summary-label">Menu</span>
+      </summary>
+      <nav class="drawer" aria-label="Main, mobile">
+        <ul>
+          {
+            primaryNav.map((item) => (
+              <li>
+                <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+          <li><a href="/contact/">Contact</a></li>
+        </ul>
+        <div class="drawer__actions">
+          <a class="btn btn--ghost" href="/login/">Member log in</a>
+          <a class="btn btn--primary" href="/join/">Join VMSNA</a>
+        </div>
+      </nav>
+    </details>
+  </div>
+</header>
+
+<style>
+  .hdr {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--cream) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hdr__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    min-height: 68px;
+  }
+
+  .hdr__brand {
+    text-decoration: none;
+    flex: none;
+  }
+
+  .hdr__desktop {
+    display: none;
+    align-items: center;
+    gap: var(--s-5);
+  }
+
+  .navlist {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+  }
+
+  .navlist a {
+    display: inline-block;
+    padding: var(--s-2) 2px;
+    font-size: var(--t-sm);
+    color: var(--text-body);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+
+  .navlist a:hover {
+    color: var(--terra-dark);
+    border-bottom-color: var(--line-strong);
+  }
+
+  .navlist a[aria-current='page'] {
+    color: var(--terra-dark);
+    border-bottom-color: var(--terra);
+  }
+
+  .hdr__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    flex: none;
+  }
+
+  .hdr__login {
+    font-size: var(--t-sm);
+    color: var(--text-body);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .hdr__login:hover {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  /* Mobile */
+
+  .hdr__mobile summary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: 44px;
+    padding-inline: var(--s-2);
+    cursor: pointer;
+    list-style: none;
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--text);
+    border-radius: var(--radius-sm);
+  }
+
+  .hdr__mobile summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .bars {
+    display: grid;
+    gap: 4px;
+    width: 20px;
+  }
+
+  .bars span {
+    display: block;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+  }
+
+  .hdr__mobile[open] .bars span:first-child {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .hdr__mobile[open] .bars span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .hdr__mobile[open] .bars span:last-child {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .bars span {
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .drawer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    background: var(--cream);
+    border-bottom: 1px solid var(--line);
+    padding: var(--s-4) var(--s-5) var(--s-6);
+    box-shadow: 0 18px 30px -22px rgb(31 23 16 / 45%);
+  }
+
+  .drawer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--s-4);
+  }
+
+  .drawer li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  .drawer a {
+    display: block;
+    padding: var(--s-3) 0;
+    font-size: var(--t-lg);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .drawer a[aria-current='page'] {
+    color: var(--terra-dark);
+  }
+
+  .drawer__actions {
+    display: grid;
+    gap: var(--s-3);
+  }
+
+  @media (min-width: 62rem) {
+    .hdr__desktop {
+      display: flex;
+    }
+    .hdr__mobile {
+      display: none;
+    }
+  }
+</style>

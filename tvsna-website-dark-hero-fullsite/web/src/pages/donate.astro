@@ -1,0 +1,114 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Donate"
+  kicker="Support the work"
+  lead="Donations fund scholarships, youth and language programmes, and direct assistance to member families who need it."
+>
+  <section class="section">
+    <div class="container">
+      <div class="options">
+        <div class="card opt">
+          <h2>One-time</h2>
+          <p>Give any amount, once. Every dollar goes to programmes and assistance.</p>
+          <a class="btn btn--primary" href="/donate/give/?type=once">Give once</a>
+        </div>
+        <div class="card opt">
+          <h2>Monthly</h2>
+          <p>
+            Become a sustaining supporter. Regular giving is what lets the
+            committees commit to a scholarship before the money is in hand.
+          </p>
+          <a class="btn btn--primary" href="/donate/give/?type=monthly">Give monthly</a>
+        </div>
+        <div class="card opt">
+          <h2>Sponsor a programme</h2>
+          <p>
+            Fund a named scholarship, a youth programme or a chapter's language
+            classes. We will put you in touch with the committee that runs it.
+          </p>
+          <a class="btn btn--ghost" href="/contact/?subject=Sponsorship">Talk to us</a>
+        </div>
+      </div>
+
+      <div class="tax">
+        <h2>Tax-deductible in the United States</h2>
+        <p>
+          Vokkaliga Mahajana Sangam North America is a registered 501(c)(3)
+          non-profit organisation. Donations from US taxpayers are tax-deductible
+          to the extent allowed by law, and you will receive a receipt by email
+          immediately and a consolidated statement each January.
+        </p>
+        <p class="tax__ein">
+          <strong>EIN:</strong> <span class="todo">to be added</span> &nbsp;·&nbsp; No
+          goods or services are provided in exchange for a donation.
+        </p>
+      </div>
+
+      <p class="member-note">
+        Membership dues are separate from donations and are not tax-deductible in
+        the same way. <a href="/membership/">See membership</a>.
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .options {
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .opt {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    height: 100%;
+  }
+
+  .opt h2 {
+    font-size: var(--t-lg);
+  }
+
+  .opt p {
+    font-size: var(--t-sm);
+    flex: 1;
+  }
+
+  .tax {
+    margin-top: var(--s-7);
+    background: var(--surface-sunk);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 66ch;
+  }
+
+  .tax h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .tax p {
+    font-size: var(--t-sm);
+  }
+
+  .tax__ein {
+    margin-top: var(--s-4);
+    color: var(--text-muted);
+  }
+
+  .todo {
+    background: #f6e9cf;
+    border-radius: 3px;
+    padding: 1px 6px;
+  }
+
+  .member-note {
+    margin-top: var(--s-6);
+    font-size: var(--t-sm);
+  }
+</style>

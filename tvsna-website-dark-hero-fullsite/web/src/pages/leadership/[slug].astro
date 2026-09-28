@@ -1,0 +1,214 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const officers = await getCollection('officers');
+  const sorted = officers.sort((a, b) => a.data.order - b.data.order);
+  return sorted.map((officer, i) => ({
+    params: { slug: officer.id },
+    props: {
+      officer,
+      prev: sorted[i - 1] ?? null,
+      next: sorted[i + 1] ?? null,
+    },
+  }));
+}
+
+const { officer, prev, next } = Astro.props;
+const d = officer.data;
+const { Content } = await render(officer);
+
+const initials =
+  d.name
+    .replace(/\[|\]/g, '')
+    .split(/\s+/)
+    .filter((w) => /^[A-Za-z]/.test(w))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || 'VM';
+
+const personJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: d.name,
+  jobTitle: d.role,
+  affiliation: { '@type': 'NGO', name: 'Vokkaliga Mahajana Sangam North America' },
+  address: { '@type': 'PostalAddress', addressLocality: d.city, addressRegion: d.state },
+};
+---
+
+<BaseLayout
+  title={`${d.name} — ${d.role}`}
+  description={d.bioShort}
+  noindex={d.placeholder}
+>
+  <article class="section">
+    <div class="container">
+      <p class="back"><a href="/leadership/">&larr; All leadership</a></p>
+
+      {d.placeholder && (
+        <p class="notice">
+          <strong>Sample entry.</strong> This is placeholder content used to review
+          the profile layout. It does not describe a real person.
+        </p>
+      )}
+
+      <header class="phead">
+        <div class="phead__mono" aria-hidden="true">{initials}</div>
+        <div>
+          <p class="kicker">{d.role} &middot; {d.term}</p>
+          <h1>{d.name}</h1>
+          {d.nameTamil && <p class="phead__tamil" lang="ta">{d.nameTamil}</p>}
+          <dl class="facts">
+            <div><dt>Lives in</dt><dd>{d.city}, {d.state}</dd></div>
+            <div><dt>Native place</dt><dd>{d.nativePlace}</dd></div>
+            <div><dt>Profession</dt><dd>{d.profession}</dd></div>
+            {d.contactRole && (
+              <div><dt>Contact</dt><dd><a href={`mailto:${d.contactRole}`}>{d.contactRole}</a></dd></div>
+            )}
+          </dl>
+        </div>
+      </header>
+
+      {d.quote && <blockquote class="pullquote">{d.quote}</blockquote>}
+
+      <div class="prose measure">
+        <Content />
+      </div>
+
+      {d.focus.length > 0 && (
+        <section class="focus">
+          <h2>Working on</h2>
+          <ul>{d.focus.map((f) => <li>{f}</li>)}</ul>
+        </section>
+      )}
+
+      <nav class="pager" aria-label="Other office bearers">
+        {prev ? <a href={`/leadership/${prev.id}/`}>&larr; {prev.data.role}</a> : <span></span>}
+        {next ? <a href={`/leadership/${next.id}/`}>{next.data.role} &rarr;</a> : <span></span>}
+      </nav>
+    </div>
+  </article>
+
+  <script type="application/ld+json" set:html={JSON.stringify(personJsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  .back {
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-5);
+  }
+
+  .notice {
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-sunk);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-5);
+  }
+
+  .phead {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 40rem) {
+    .phead {
+      grid-template-columns: auto 1fr;
+      gap: var(--s-6);
+    }
+  }
+
+  .phead__mono {
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    background: #f0dec9;
+    color: #8a3d1c;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    font-weight: 500;
+  }
+
+  .phead h1 {
+    font-size: var(--t-2xl);
+    margin-block: var(--s-2);
+  }
+
+  .phead__tamil {
+    color: var(--text-muted);
+  }
+
+  .facts {
+    display: grid;
+    gap: var(--s-3) var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+    margin-top: var(--s-5);
+  }
+
+  .facts dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+  }
+
+  .pullquote {
+    margin: var(--s-7) 0;
+    padding-left: var(--s-5);
+    border-left: 3px solid var(--gold);
+    font-family: var(--font-display);
+    font-size: var(--t-xl);
+    line-height: var(--leading-snug);
+    color: var(--text);
+    max-width: 34ch;
+  }
+
+  .prose :global(p + p) {
+    margin-top: var(--s-4);
+  }
+
+  .focus {
+    margin-top: var(--s-6);
+  }
+
+  .focus h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .focus ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    list-style: none;
+    padding: 0;
+  }
+
+  .focus li {
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: var(--s-2) var(--s-4);
+    font-size: var(--t-sm);
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin-top: var(--s-8);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    font-size: var(--t-sm);
+  }
+</style>

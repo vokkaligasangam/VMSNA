@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page not found" description="That page does not exist." noindex={true}>
+  <section class="section">
+    <div class="container nf">
+      <p class="kicker">404</p>
+      <h1>We could not find that page</h1>
+      <p class="lead">
+        The link may be out of date, or the page may have moved when we rebuilt
+        the site.
+      </p>
+      <ul class="where">
+        <li><a href="/">Home</a></li>
+        <li><a href="/about/">About VMSNA</a></li>
+        <li><a href="/membership/">Membership</a></li>
+        <li><a href="/events/">Events</a></li>
+        <li><a href="/contact/">Contact us</a></li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf { max-width: 52ch; }
+  .nf h1 { margin-block: var(--s-3) var(--s-4); }
+  .where {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-6) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-5);
+  }
+</style>

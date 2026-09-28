@@ -1,0 +1,241 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const forms = [
+  {
+    type: 'Education',
+    title: 'Education assistance',
+    blurb: 'Tuition, fees, books and exam costs for students in member families.',
+    fields: [
+      { name: 'program', label: 'Programme or grade', type: 'text', required: true },
+      { name: 'statement', label: 'Tell us about your situation', type: 'textarea', required: true },
+    ],
+  },
+  {
+    type: 'Medical',
+    title: 'Medical assistance',
+    blurb: 'Help with medical costs, navigating care, or finding a clinician in the community.',
+    fields: [
+      {
+        name: 'urgency',
+        label: 'How urgent is this?',
+        type: 'select',
+        required: true,
+        options: ['Immediate', 'Within 1 month', 'General'],
+      },
+      { name: 'summary', label: 'Summary', type: 'textarea', required: true },
+    ],
+  },
+  {
+    type: 'Employment',
+    title: 'Employment assistance',
+    blurb: 'Introductions, referrals, résumé review and interview practice from members in your field.',
+    fields: [
+      {
+        name: 'situation',
+        label: 'Current situation',
+        type: 'select',
+        required: true,
+        options: [
+          'Recently lost job',
+          'Seeking new opportunities',
+          'Career transition',
+          'New to the job market here',
+        ],
+      },
+      { name: 'field', label: 'Field or industry', type: 'text', required: true, placeholder: 'IT, healthcare, finance…' },
+      {
+        name: 'experience',
+        label: 'Experience level',
+        type: 'select',
+        required: true,
+        options: ['Entry (0–2 years)', 'Mid (3–7 years)', 'Senior (8–15 years)', 'Executive (15+ years)'],
+      },
+      { name: 'details', label: 'Anything else that would help', type: 'textarea', required: false },
+    ],
+  },
+  {
+    type: 'Other Services',
+    title: 'Other support',
+    blurb: 'Legal, tax, counselling, bereavement, or something that does not fit the categories above.',
+    fields: [
+      { name: 'service', label: 'What kind of help?', type: 'text', required: true, placeholder: 'Legal, tax, counselling, other' },
+      { name: 'details', label: 'Details', type: 'textarea', required: true },
+    ],
+  },
+];
+---
+
+<PageLayout
+  title="Request support"
+  kicker="We look after our own"
+  lead="Education, medical, employment and other assistance for our community. Requests go straight to the relevant committee and are treated in confidence."
+>
+  <section class="section">
+    <div class="container">
+      <p class="confidential">
+        <strong>What happens to what you write here.</strong> These requests are
+        read only by the committee members who handle them. They are not shown to
+        other members, and they are not published anywhere on this site. You do
+        not need to be signed in, and you do not need to be a member to ask.
+      </p>
+
+      <div class="forms">
+        {
+          forms.map((f) => (
+            <section class="fcard">
+              <h2>{f.title}</h2>
+              <p class="fcard__blurb">{f.blurb}</p>
+
+              <form data-request-type={f.type} novalidate>
+                <div class="field">
+                  <label for={`${f.type}-name`}>Your name</label>
+                  <input id={`${f.type}-name`} name="name" type="text" required autocomplete="name" />
+                </div>
+                <div class="field">
+                  <label for={`${f.type}-email`}>Email</label>
+                  <input id={`${f.type}-email`} name="email" type="email" required autocomplete="email" />
+                </div>
+
+                {f.fields.map((field) => (
+                  <div class="field">
+                    <label for={`${f.type}-${field.name}`}>
+                      {field.label}
+                      {!field.required && <span class="opt"> (optional)</span>}
+                    </label>
+                    {field.type === 'textarea' ? (
+                      <textarea
+                        id={`${f.type}-${field.name}`}
+                        name={field.name}
+                        rows="4"
+                        required={field.required}
+                      />
+                    ) : field.type === 'select' ? (
+                      <select id={`${f.type}-${field.name}`} name={field.name} required={field.required}>
+                        <option value="">Please choose…</option>
+                        {field.options?.map((o) => <option value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        id={`${f.type}-${field.name}`}
+                        name={field.name}
+                        type="text"
+                        placeholder={field.placeholder}
+                        required={field.required}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <p class="status" data-form-status hidden></p>
+                <button class="btn btn--primary" type="submit">Send request</button>
+              </form>
+            </section>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { wireHelpForms } from '../lib/publicForms';
+  wireHelpForms();
+</script>
+
+<style>
+  .confidential {
+    background: var(--surface-sunk);
+    border-left: 3px solid var(--paddy);
+    border-radius: 0;
+    padding: var(--s-4) var(--s-5);
+    max-width: 62ch;
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-6);
+  }
+
+  .forms {
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .fcard {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .fcard h2 {
+    font-size: var(--t-xl);
+  }
+
+  .fcard__blurb {
+    margin-block: var(--s-2) var(--s-5);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .field {
+    display: grid;
+    gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+
+  label {
+    font-size: var(--t-sm);
+    font-weight: 500;
+  }
+
+  .opt {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  /*
+    Form controls are styled explicitly. The old stylesheet set width and
+    padding but no colours, so every field rendered in the browser's light
+    default chrome on a dark page — which is why each one carried a six
+    property inline style.
+  */
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: var(--s-3);
+    background: var(--cream);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--t-sm);
+  }
+
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: var(--text-muted);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .status {
+    margin-bottom: var(--s-4);
+    padding: var(--s-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--t-sm);
+  }
+
+  .status[data-tone='success'] {
+    background: #e7efe6;
+    color: #24452c;
+  }
+
+  .status[data-tone='error'] {
+    background: #f6e3dc;
+    color: #7a2c12;
+  }
+</style>

@@ -1,0 +1,61 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Media"
+  kicker="Albums, video and publications"
+  lead="Photographs and recordings from chapter events and national programmes."
+>
+  <section class="section">
+    <div class="container">
+      <div class="soon">
+        <h2>Galleries are being organised</h2>
+        <p>
+          We are collecting photographs from chapter events and the 2026
+          convention, and setting up albums here. Full event albums will sit
+          behind member sign-in, because they show families and children; a
+          public selection will be available to everyone.
+        </p>
+        <p>
+          Have photographs from a VMSNA event?
+          <a href="/contact/?subject=Event%20photographs">Send them to us</a>.
+        </p>
+      </div>
+
+      <div class="planned">
+        <div>
+          <h3>Event albums</h3>
+          <p>Photo stories from chapter gatherings and national programmes.</p>
+        </div>
+        <div>
+          <h3>Video</h3>
+          <p>Performances, interviews and community highlights.</p>
+        </div>
+        <div>
+          <h3>Publications</h3>
+          <p>Newsletters, annual reports and the committee minutes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .soon {
+    background: var(--surface-sunk);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 62ch;
+  }
+  .soon h2 { font-size: var(--t-xl); margin-bottom: var(--s-3); }
+  .soon p + p { margin-top: var(--s-3); }
+  .planned {
+    display: grid;
+    gap: var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+    margin-top: var(--s-7);
+  }
+  .planned h3 { font-size: var(--t-lg); margin-bottom: var(--s-2); }
+  .planned p { font-size: var(--t-sm); color: var(--text-muted); }
+</style>

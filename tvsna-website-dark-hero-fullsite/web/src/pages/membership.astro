@@ -1,0 +1,244 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+import { tiers, benefits } from '../config/membership';
+---
+
+<PageLayout
+  title="Membership"
+  kicker="Join the Sangam"
+  lead="Membership funds the scholarships, youth programmes and family assistance we provide to our own — and opens the directory that makes the network useful."
+>
+  <section class="section">
+    <div class="container">
+      <ul class="tiers">
+        {
+          tiers.map((t) => (
+            <li class={`tier ${t.popular ? 'tier--popular' : ''}`}>
+              <p class="tier__flag" aria-hidden={!t.popular}>
+                {t.popular ? 'Most families choose this' : ''}
+              </p>
+              <h2>{t.name}</h2>
+              <p class="tier__price">
+                <span class="tier__amount">${t.price.toLocaleString('en-US')}</span>
+                <span class="tier__cadence">{t.cadence === 'year' ? 'per year' : 'one time'}</span>
+              </p>
+              <p class="tier__blurb">{t.blurb}</p>
+              <ul class="tier__includes">
+                {t.includes.map((i) => <li>{i}</li>)}
+              </ul>
+              <a
+                class={`btn ${t.popular ? 'btn--primary' : 'btn--ghost'}`}
+                href={`/join/?tier=${t.id}`}
+              >
+                Choose {t.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="paynote">
+        <p>
+          <strong>How joining works.</strong> You apply first and a member of the
+          committee reviews it — we check that you are a Tamil Nadu Vokkaliga
+          family, which is the only eligibility requirement. Once you are
+          approved we email you a link to set up payment. Nobody is charged
+          before their application is accepted.
+        </p>
+        <p class="paynote__p">
+          Payment is handled by Stripe. Card details never touch vmsna.org. We
+          accept US and Canadian cards; members paying from India should choose
+          Life membership, as recurring card mandates from India are unreliable.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section benefits">
+    <div class="container">
+      <h2>What membership gives you</h2>
+      <div class="benefits__grid">
+        {
+          benefits.map((b) => (
+            <div>
+              <h3>{b.title}</h3>
+              <p>{b.body}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container container-narrow">
+      <h2>Questions</h2>
+      <dl class="faq">
+        <dt>Who is eligible?</dt>
+        <dd>
+          Any family of Tamil Nadu Vokkaliga (Gowda) origin living in the United
+          States or Canada, and members in India who wish to stay connected.
+        </dd>
+        <dt>Is VMSNA a religious organisation?</dt>
+        <dd>
+          No. We are a cultural and mutual-support organisation. Members come
+          from Hindu family backgrounds, but we do not organise worship and
+          membership carries no religious requirement of any kind.
+        </dd>
+        <dt>What happens to my personal details?</dt>
+        <dd>
+          Your application is visible to the committee reviewing it. In the
+          directory you choose between a full profile and a limited one showing
+          only your name and state. Your home address is never shown to other
+          members.
+        </dd>
+        <dt>Can I cancel?</dt>
+        <dd>
+          Yes, at any time from your account page. Your membership runs to the
+          end of the period you have paid for.
+        </dd>
+      </dl>
+      <p class="cta"><a class="btn btn--primary" href="/join/">Start your application</a></p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .tiers {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .tier {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    height: 100%;
+  }
+
+  .tier--popular {
+    border: 2px solid var(--terra);
+  }
+
+  /* Reserved on every card so the prices sit on one line across the row. */
+  .tier__flag {
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terra-dark);
+    min-height: 1.4em;
+    margin: 0;
+  }
+
+  .tier h2 {
+    font-size: var(--t-lg);
+  }
+
+  .tier__price {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+
+  .tier__amount {
+    font-family: var(--font-display);
+    font-size: var(--t-2xl);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .tier__cadence {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .tier__blurb {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .tier__includes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--t-sm);
+    flex: 1;
+  }
+
+  .tier__includes li {
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .tier__includes li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--paddy);
+  }
+
+  .paynote {
+    margin-top: var(--s-6);
+    background: var(--surface-sunk);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    max-width: 62ch;
+    font-size: var(--t-sm);
+  }
+
+  .paynote__p {
+    margin-top: var(--s-3);
+    color: var(--text-muted);
+  }
+
+  .benefits {
+    background: var(--surface-sunk);
+  }
+
+  .benefits__grid {
+    display: grid;
+    gap: var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+    margin-top: var(--s-5);
+  }
+
+  .benefits h3 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
+
+  .faq {
+    margin-top: var(--s-5);
+  }
+
+  .faq dt {
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+    margin-top: var(--s-5);
+  }
+
+  .faq dd {
+    margin: var(--s-2) 0 0;
+  }
+
+  .cta {
+    margin-top: var(--s-7);
+  }
+</style>

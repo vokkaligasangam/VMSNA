@@ -1,0 +1,75 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '../../layouts/PageLayout.astro';
+import OfficerCard from '../../components/leadership/OfficerCard.astro';
+
+const all = (await getCollection('officers')).filter((o) => o.data.current);
+const term = all[0]?.data.term ?? '';
+const anyPlaceholder = all.some((o) => o.data.placeholder);
+
+const tiers = [
+  { key: 'executive', label: 'Executive committee' },
+  { key: 'office-bearer', label: 'Office bearers' },
+  { key: 'committee-chair', label: 'Committee chairs' },
+  { key: 'chapter-lead', label: 'Chapter leads' },
+  { key: 'advisor', label: 'Advisors' },
+] as const;
+
+const grouped = tiers
+  .map((t) => ({
+    ...t,
+    people: all
+      .filter((o) => o.data.tier === t.key)
+      .sort((a, b) => a.data.order - b.data.order),
+  }))
+  .filter((g) => g.people.length > 0);
+---
+
+<PageLayout
+  title="Our leadership"
+  kicker={term ? `Term ${term}` : 'Leadership'}
+  lead="Elected volunteers serving VMSNA across seven chapters. Every one of them does this alongside a full-time job and a family."
+>
+  <section class="section">
+    <div class="container">
+      {anyPlaceholder && (
+        <p class="notice">
+          <strong>Placeholder content.</strong> These entries exist so the layout
+          can be reviewed. Replace them with real office bearers before launch —
+          see <code>src/content/officers/_TEMPLATE.md.txt</code>.
+        </p>
+      )}
+
+      {grouped.map((group) => (
+        <section class="tier">
+          <h2>{group.label}</h2>
+          <div class="grid grid--auto">
+            {group.people.map((o) => (
+              <OfficerCard officer={o} featured={group.key === 'executive'} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .notice {
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-sunk);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-6);
+  }
+
+  .tier + .tier {
+    margin-top: var(--s-7);
+  }
+
+  .tier h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-5);
+  }
+</style>
