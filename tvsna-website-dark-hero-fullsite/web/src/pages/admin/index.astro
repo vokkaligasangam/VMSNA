@@ -1,0 +1,132 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+const tools = [
+  {
+    href: '/admin/queue/',
+    title: 'Approval queue',
+    body: 'Review membership applications. Approving publishes the directory entry and sends the welcome email.',
+    counter: 'pending',
+  },
+  {
+    href: '/admin/welfare/',
+    title: 'Welfare inbox',
+    body: 'Education, medical and employment assistance requests. Confidential to administrators.',
+    counter: 'welfare',
+  },
+  {
+    href: '/admin/contact/',
+    title: 'Contact inbox',
+    body: 'Messages from the public contact form.',
+    counter: 'contact',
+  },
+  {
+    href: '/admin/diagnostics/',
+    title: 'Diagnostics',
+    body: 'Look up one member by email and see their account, application, directory entry and claims in one place.',
+  },
+  {
+    href: '/admin/roles/',
+    title: 'Administrators',
+    body: 'Who has admin access, and whether their claim has landed.',
+  },
+];
+---
+
+<AdminLayout title="Overview" lead="Committee tools for running VMSNA.">
+  <div class="tools">
+    {
+      tools.map((t) => (
+        <a class="tool" href={t.href}>
+          <h2>
+            {t.title}
+            {t.counter && <span class="tool__count" data-count={t.counter} hidden />}
+          </h2>
+          <p>{t.body}</p>
+        </a>
+      ))
+    }
+  </div>
+</AdminLayout>
+
+<script>
+  // Counts are a convenience, not a gate. A failure here must not stop the
+  // page being usable, so each is independent and errors are swallowed.
+  window.addEventListener(
+    'admin:ready',
+    async () => {
+      const [{ db }, fs] = await Promise.all([
+        import('../../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+
+      const show = (key: string, n: number) => {
+        const el = document.querySelector<HTMLElement>(`[data-count="${key}"]`);
+        if (!el || n === 0) return;
+        el.hidden = false;
+        el.textContent = String(n);
+      };
+
+      const count = async (collection: string, field: string, value: string) => {
+        try {
+          const snap = await fs.getCountFromServer(
+            fs.query(fs.collection(db(), collection), fs.where(field, '==', value)),
+          );
+          return snap.data().count;
+        } catch {
+          return 0;
+        }
+      };
+
+      show('pending', await count('membershipApplications', 'status', 'pending'));
+      show('welfare', await count('helpRequests', 'status', 'pending'));
+      show('contact', await count('contactMessages', 'status', 'unread'));
+    },
+    { once: true },
+  );
+</script>
+
+<style>
+  .tools {
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  }
+
+  .tool {
+    display: block;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .tool:hover {
+    border-color: var(--terra);
+  }
+
+  .tool h2 {
+    font-size: var(--t-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+  }
+
+  .tool__count {
+    background: var(--terra);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    border-radius: 999px;
+    padding: 1px var(--s-3);
+  }
+
+  .tool p {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

@@ -26,7 +26,15 @@ export interface AuthState {
   isAdmin: boolean;
 }
 
-const ADMIN_EMAILS = new Set([
+/*
+  DUAL-ACCEPT WINDOW — delete this list when firestore.rules drops its own.
+  Admin identity is a custom claim now; the email list is kept only so that an
+  administrator whose claim has not yet been granted still sees the admin link.
+  Nothing is authorised here either way: /admin/* re-checks the claim against a
+  forced token refresh, and the rules are the real boundary.
+  See docs/RUNBOOK-admin-roles.md
+*/
+const LEGACY_ADMIN_EMAILS = new Set([
   'vikramkanagaraj@gmail.com',
   'vokkaligasangam@gmail.com',
   'sureshgowder@gmail.com',
@@ -90,10 +98,25 @@ export async function startAuth(): Promise<void> {
   if (started) return;
   started = true;
 
-  const [{ auth }, { onAuthStateChanged }] = await Promise.all([
-    import('./firebase'),
-    import('firebase/auth'),
-  ]);
+  let auth: typeof import('./firebase')['auth'];
+  let onAuthStateChanged: typeof import('firebase/auth')['onAuthStateChanged'];
+
+  try {
+    [{ auth }, { onAuthStateChanged }] = await Promise.all([
+      import('./firebase'),
+      import('firebase/auth'),
+    ]);
+  } catch (error) {
+    /*
+      A failed dynamic import — a stale chunk after a deploy, a blocked
+      request — would otherwise leave gated pages stuck on data-auth="unknown"
+      showing a skeleton forever. Fall back to the signed-out view, which is
+      always safe: it reveals nothing and offers a way back in.
+    */
+    console.error('Auth failed to initialise; falling back to the signed-out view', error);
+    publish({ ready: true, user: null, verified: false, state: 'guest', member: null, isAdmin: false });
+    return;
+  }
 
   onAuthStateChanged(auth(), async (user) => {
     if (!user) {
@@ -101,7 +124,14 @@ export async function startAuth(): Promise<void> {
       return;
     }
 
-    const isAdmin = ADMIN_EMAILS.has((user.email ?? '').toLowerCase());
+    // Prefer the claim; fall back to the legacy list only while it still exists.
+    let isAdmin = LEGACY_ADMIN_EMAILS.has((user.email ?? '').toLowerCase());
+    try {
+      const token = await user.getIdTokenResult();
+      if (token.claims.admin === true) isAdmin = true;
+    } catch {
+      /* token unavailable — the fallback above still applies */
+    }
 
     if (!user.emailVerified) {
       // Unverified accounts are treated as pending: the member area shows the

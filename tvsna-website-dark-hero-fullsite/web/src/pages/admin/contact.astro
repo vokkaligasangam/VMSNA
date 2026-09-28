@@ -1,0 +1,41 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout
+  title="Contact inbox"
+  lead="Messages sent through the contact form on the public site."
+>
+  <div class="bar">
+    <label class="toggle">
+      <input type="checkbox" data-show-handled />
+      <span>Show handled messages</span>
+    </label>
+    <p class="counts" id="counts" role="status" aria-live="polite"></p>
+  </div>
+
+  <p class="status" data-inbox-status hidden></p>
+  <div id="inbox" class="inbox"></div>
+</AdminLayout>
+
+<script>
+  import { mountInbox } from '../../lib/inboxView';
+
+  const inbox = mountInbox({
+    collection: 'contactMessages',
+    mount: document.getElementById('inbox')!,
+    statusBox: document.querySelector<HTMLElement>('[data-inbox-status]')!,
+    titleField: 'subject',
+    subtitleFields: ['name'],
+    primary: ['name', 'email', 'subject', 'message'],
+    emptyMessage: 'No messages have been received.',
+  });
+
+  document.addEventListener('inbox:counts', (event) => {
+    const { open, total } = (event as CustomEvent).detail;
+    const el = document.getElementById('counts');
+    if (el) el.textContent = `${open} open · ${total} total`;
+  });
+
+  window.addEventListener('admin:ready', () => inbox.load(), { once: true });
+</script>

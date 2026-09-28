@@ -17,6 +17,9 @@ import { requireAdmin } from "./lib/admin.js";
 
 export { projectMemberToDirectory, rebuildDirectory } from "./directory.js";
 export { deleteMyAccount } from "./account.js";
+export { syncRoleClaims, setAdminRole, listAdminRoles, whoAmI } from "./roles.js";
+export { notifyHelpRequest, notifyContactMessage } from "./inbox.js";
+export { getVerificationStatuses, diagnoseMember, requeueAdminNotification } from "./adminTools.js";
 
 // Initialize Firebase Admin
 admin.initializeApp();

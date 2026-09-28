@@ -1,0 +1,300 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout
+  title="Approval queue"
+  lead="Applications waiting for review. Approving one sends the applicant their welcome email and publishes their directory entry."
+>
+  <p class="status" data-queue-status hidden></p>
+  <div id="queue" class="queue"></div>
+</AdminLayout>
+
+<script>
+  import { getVerificationStatuses, readableError, type VerificationInfo } from '../../lib/adminApi';
+
+  const host = document.getElementById('queue')!;
+  const statusBox = document.querySelector<HTMLElement>('[data-queue-status]')!;
+
+  function say(tone: 'success' | 'error' | 'info', message: string) {
+    statusBox.hidden = false;
+    statusBox.dataset.tone = tone;
+    statusBox.textContent = message;
+  }
+
+  const FIELDS: [string, string][] = [
+    ['name', 'Name'],
+    ['email', 'Email'],
+    ['phone', 'Phone'],
+    ['street', 'Street'],
+    ['city', 'City'],
+    ['state', 'State'],
+    ['zip', 'Postal code'],
+    ['country', 'Country'],
+    ['nativePlaceSelf', 'Native place'],
+    ['profession', 'Profession'],
+    ['spouseName', 'Spouse'],
+    ['spouseEmail', 'Spouse email'],
+    ['spousePhone', 'Spouse phone'],
+    ['spouseProfession', 'Spouse profession'],
+    ['nativePlaceSpouse', 'Spouse native place'],
+    ['childrenDetails', 'Children'],
+    ['privacyLevel', 'Directory privacy'],
+  ];
+
+  /* Everything is built with createElement and textContent. The old admin page
+     interpolated applicant names straight into innerHTML and into an inline
+     onclick, which both broke on an apostrophe and allowed injection. */
+  function card(docId: string, data: Record<string, any>, verify?: VerificationInfo) {
+    const el = document.createElement('article');
+    el.className = 'app';
+    el.dataset.docId = docId;
+
+    const head = document.createElement('header');
+    head.className = 'app__head';
+
+    const name = document.createElement('h2');
+    name.textContent = data.name || '(no name given)';
+    head.append(name);
+
+    const badge = document.createElement('span');
+    const verified = verify?.emailVerified === true;
+    badge.className = `badge ${verified ? 'badge--ok' : 'badge--warn'}`;
+    badge.textContent = verified ? 'Email verified' : 'Email not verified';
+    head.append(badge);
+
+    if (data.submittedAt?.toDate) {
+      const when = document.createElement('span');
+      when.className = 'app__when';
+      when.textContent = data.submittedAt.toDate().toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+      head.append(when);
+    }
+    el.append(head);
+
+    const dl = document.createElement('dl');
+    dl.className = 'app__facts';
+    for (const [key, label] of FIELDS) {
+      if (!data[key]) continue;
+      const wrap = document.createElement('div');
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.textContent = String(data[key]);
+      wrap.append(dt, dd);
+      dl.append(wrap);
+    }
+    el.append(dl);
+
+    if (!verified) {
+      const warn = document.createElement('p');
+      warn.className = 'app__warn';
+      warn.textContent =
+        'This applicant has not verified their email address yet. Approving now is possible, but they will not be able to sign in until they do.';
+      el.append(warn);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'app__actions';
+
+    const approve = document.createElement('button');
+    approve.className = 'btn btn--primary btn--sm';
+    approve.textContent = 'Approve';
+    approve.addEventListener('click', () => decide(docId, data, 'approved'));
+
+    const reject = document.createElement('button');
+    reject.className = 'btn btn--danger btn--sm';
+    reject.textContent = 'Reject';
+    reject.addEventListener('click', () => decide(docId, data, 'rejected'));
+
+    actions.append(approve, reject);
+    el.append(actions);
+    return el;
+  }
+
+  async function decide(docId: string, data: Record<string, any>, status: 'approved' | 'rejected') {
+    const who = data.name || data.email || 'this applicant';
+    let reason = '';
+    if (status === 'rejected') {
+      const entered = prompt(`Reject ${who}?\n\nOptionally give a reason — it is recorded, not emailed automatically.`);
+      if (entered === null) return;
+      reason = entered;
+    } else if (!confirm(`Approve ${who}?\n\nThey will get their welcome email and appear in the member directory.`)) {
+      return;
+    }
+
+    const el = host.querySelector<HTMLElement>(`[data-doc-id="${CSS.escape(docId)}"]`);
+    if (el) el.style.opacity = '0.45';
+
+    try {
+      const [{ db }, { auth }, fs] = await Promise.all([
+        import('../../lib/firebase'),
+        import('../../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const by = auth().currentUser?.email ?? 'unknown';
+      const patch: Record<string, unknown> =
+        status === 'approved'
+          ? { status, approvedAt: fs.serverTimestamp(), approvedBy: by }
+          : { status, rejectedAt: fs.serverTimestamp(), rejectedBy: by, rejectionReason: reason || 'Not specified' };
+
+      await fs.updateDoc(fs.doc(db(), 'membershipApplications', docId), patch);
+      el?.remove();
+      say(
+        'success',
+        status === 'approved'
+          ? `${who} approved. Their welcome email is sent by the status trigger, and their directory entry is published automatically.`
+          : `${who} marked as rejected.`,
+      );
+      if (!host.querySelector('.app')) empty();
+    } catch (error) {
+      if (el) el.style.opacity = '1';
+      say('error', readableError(error));
+    }
+  }
+
+  function empty() {
+    host.replaceChildren();
+    const p = document.createElement('p');
+    p.className = 'queue__empty';
+    p.textContent = 'No applications are waiting. Everything is reviewed.';
+    host.append(p);
+  }
+
+  async function load() {
+    say('info', 'Loading applications…');
+    try {
+      const [{ db }, fs] = await Promise.all([
+        import('../../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const snap = await fs.getDocs(
+        fs.query(
+          fs.collection(db(), 'membershipApplications'),
+          fs.where('status', '==', 'pending'),
+          fs.orderBy('submittedAt', 'desc'),
+        ),
+      );
+
+      if (snap.empty) {
+        statusBox.hidden = true;
+        empty();
+        return;
+      }
+
+      const docs = snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+      const uids = docs.map((d) => d.data.userId).filter(Boolean) as string[];
+
+      /* One batched call for every applicant, rather than the previous page's
+         one awaited call per row. */
+      let users: Record<string, VerificationInfo> = {};
+      try {
+        ({ users } = await getVerificationStatuses(uids));
+      } catch (error) {
+        console.warn('Verification lookup failed', error);
+      }
+
+      host.replaceChildren();
+      for (const d of docs) host.append(card(d.id, d.data, users[d.data.userId]));
+      statusBox.hidden = true;
+    } catch (error) {
+      say('error', readableError(error));
+    }
+  }
+
+  window.addEventListener('admin:ready', load, { once: true });
+</script>
+
+<style>
+  .queue {
+    display: grid;
+    gap: var(--s-4);
+  }
+
+  .queue :global(.queue__empty) {
+    background: var(--surface-sunk);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    color: var(--text-muted);
+  }
+
+  .queue :global(.app) {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    transition: opacity 180ms ease;
+  }
+
+  .queue :global(.app__head) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-3);
+    margin-bottom: var(--s-4);
+  }
+
+  .queue :global(.app__head h2) {
+    font-size: var(--t-lg);
+  }
+
+  .queue :global(.app__when) {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  .queue :global(.badge) {
+    font-size: var(--t-xs);
+    border-radius: 999px;
+    padding: 2px var(--s-3);
+  }
+
+  .queue :global(.badge--ok) {
+    background: #e2ece1;
+    color: #275235;
+  }
+
+  .queue :global(.badge--warn) {
+    background: #f6ead0;
+    color: #6b4a06;
+  }
+
+  .queue :global(.app__facts) {
+    display: grid;
+    gap: var(--s-3) var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  }
+
+  .queue :global(.app__facts dt) {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .queue :global(.app__facts dd) {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+    overflow-wrap: break-word;
+  }
+
+  .queue :global(.app__warn) {
+    margin-top: var(--s-4);
+    padding: var(--s-3);
+    background: #f8f0dd;
+    border-radius: var(--radius-sm);
+    font-size: var(--t-sm);
+    color: #6b4a06;
+  }
+
+  .queue :global(.app__actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+</style>

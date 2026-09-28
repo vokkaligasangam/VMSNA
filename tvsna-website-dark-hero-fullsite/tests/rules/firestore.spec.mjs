@@ -245,6 +245,79 @@ describe('memberIndex — the access oracle', () => {
   });
 });
 
+describe('admin identity', () => {
+  // A claim-only admin, with no entry on the legacy email list.
+  const asClaimAdmin = () =>
+    testEnv
+      .authenticatedContext('claimadmin', {
+        email: 'newadmin@example.com',
+        email_verified: true,
+        admin: true,
+      })
+      .firestore();
+
+  const asSuper = () =>
+    testEnv
+      .authenticatedContext('superadmin', {
+        email: 'super@example.com',
+        email_verified: true,
+        admin: true,
+        superAdmin: true,
+      })
+      .firestore();
+
+  before(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'roles/claimadmin'), {
+        admin: true,
+        superAdmin: false,
+        email: 'newadmin@example.com',
+      });
+      await setDoc(doc(ctx.firestore(), 'adminAudit/a1'), { action: 'role.grant', by: 'super@example.com' });
+    });
+  });
+
+  // The whole point of the migration: admin access without being on the list.
+  it('accepts the claim alone, with no legacy email entry', async () => {
+    await assertSucceeds(getDoc(doc(asClaimAdmin(), 'helpRequests/r1')));
+  });
+
+  it('still accepts the legacy email list during the dual-accept window', async () => {
+    await assertSucceeds(getDoc(doc(asMember('admin1', ADMIN), 'helpRequests/r1')));
+  });
+
+  it('refuses an ordinary member', async () => {
+    await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'helpRequests/r1')));
+  });
+
+  // Writable roles would mean self-granting admin.
+  it('refuses every client write to roles', async () => {
+    await assertFails(setDoc(doc(asMember('bob', 'bob@example.com'), 'roles/bob'), { admin: true }));
+    await assertFails(setDoc(doc(asClaimAdmin(), 'roles/claimadmin'), { superAdmin: true }));
+    await assertFails(setDoc(doc(asSuper(), 'roles/bob'), { admin: true }));
+  });
+
+  it('lets a member read their own role but not anyone else', async () => {
+    const db = asClaimAdmin();
+    await assertSucceeds(getDoc(doc(db, 'roles/claimadmin')));
+    await assertFails(getDoc(doc(db, 'roles/superadmin')));
+  });
+
+  it('lets a super administrator read the whole roster', async () => {
+    await assertSucceeds(getDocs(collection(asSuper(), 'roles')));
+  });
+
+  it('refuses a plain admin listing the roster', async () => {
+    await assertFails(getDocs(collection(asClaimAdmin(), 'roles')));
+  });
+
+  it('keeps the audit log readable by admins and writable by nobody', async () => {
+    await assertSucceeds(getDoc(doc(asClaimAdmin(), 'adminAudit/a1')));
+    await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'adminAudit/a1')));
+    await assertFails(setDoc(doc(asSuper(), 'adminAudit/a2'), { action: 'forged' }));
+  });
+});
+
 describe('collections with no client access', () => {
   it('refuses reads of the unused members collection', async () => {
     await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'members/bob')));

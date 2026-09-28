@@ -454,6 +454,149 @@ html:not([data-auth]) [data-gate~='guest'] {
   color: var(--text-body);
 }
 
+/*
+  Admin inbox. Global because the list items are created by a shared module
+  rather than inside a single Astro component, so scoped styles would not
+  reach them.
+*/
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
+.toggle input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.counts {
+  font-size: var(--t-sm);
+  color: var(--text-muted);
+}
+
+.inbox {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.inbox__empty {
+  background: var(--surface-sunk);
+  border-radius: var(--radius-lg);
+  padding: var(--s-6);
+  color: var(--text-muted);
+}
+
+.item {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--s-4) var(--s-5);
+}
+
+.item--handled {
+  background: transparent;
+  border-style: dashed;
+}
+
+.item summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-2) var(--s-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.item summary::-webkit-details-marker {
+  display: none;
+}
+
+.item summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.item[open] summary::before {
+  content: '▾';
+}
+
+.item__title {
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+  color: var(--text);
+}
+
+.item__sub {
+  font-size: var(--t-sm);
+  color: var(--text-muted);
+}
+
+.item__when {
+  font-size: var(--t-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.badge {
+  font-size: var(--t-xs);
+  border-radius: 999px;
+  padding: 2px var(--s-3);
+}
+
+.badge--ok {
+  background: #e2ece1;
+  color: #275235;
+}
+
+.badge--open {
+  background: #f6ead0;
+  color: #6b4a06;
+}
+
+.item__facts {
+  display: grid;
+  gap: var(--s-3) var(--s-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+
+.item__facts dt {
+  font-size: var(--t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.item__facts dd {
+  margin: 2px 0 0;
+  font-size: var(--t-sm);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+}
+
 /* Cards */
 
 .card {

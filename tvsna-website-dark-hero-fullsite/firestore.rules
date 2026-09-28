@@ -16,8 +16,26 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // DUAL-ACCEPT WINDOW.
+    //
+    // Admin identity is moving from this email list to a custom claim, synced
+    // from roles/{uid}. Both are accepted until every administrator has signed
+    // in once and confirmed their claim has landed (via /admin/roles, which
+    // shows each person their own decoded token).
+    //
+    // The email branch below is then removed in a SEPARATE deploy. Doing both
+    // at once risks locking every admin out with no way back except a
+    // service-account script. Steps: docs/RUNBOOK-admin-roles.md
     function isAdmin() {
-      return signedIn() && request.auth.token.email in [
+      return signedIn() && (request.auth.token.admin == true || onLegacyAdminList());
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && request.auth.token.superAdmin == true;
+    }
+
+    function onLegacyAdminList() {
+      return request.auth.token.email in [
         'vikramkanagaraj@gmail.com',
         'vokkaligasangam@gmail.com',
         'sureshgowder@gmail.com',
@@ -122,6 +140,20 @@ service cloud.firestore {
     // their own to find out whether they are approved.
     match /memberIndex/{uid} {
       allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Source of truth for admin identity. Written only by setAdminRole, which
+    // audits every change and refuses to remove the last super administrator.
+    // A client that could write here could make itself an admin.
+    match /roles/{uid} {
+      allow read: if isSuperAdmin() || isOwner(uid);
+      allow write: if false;
+    }
+
+    // Append-only record of privileged actions. Function-written.
+    match /adminAudit/{docId} {
+      allow read: if isAdmin();
       allow write: if false;
     }
 
