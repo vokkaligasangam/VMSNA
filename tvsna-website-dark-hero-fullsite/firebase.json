@@ -84,6 +84,16 @@
         "source": "/admin.html",
         "destination": "/admin/queue/",
         "type": 301
+      },
+      {
+        "source": "/membership.html",
+        "destination": "/membership/",
+        "type": 301
+      },
+      {
+        "source": "/dashboard.html",
+        "destination": "/account/",
+        "type": 301
       }
     ],
     "headers": [
@@ -102,15 +112,6 @@
           {
             "key": "Cache-Control",
             "value": "public, max-age=0, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "/@(dashboard|membership).html",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-store"
           }
         ]
       },
