@@ -184,6 +184,67 @@ describe('contactMessages', () => {
   });
 });
 
+describe('directory — the privacy-filtered projection', () => {
+  before(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      // Written only by Cloud Functions in production.
+      await setDoc(doc(db, 'directory/bob'), { uid: 'bob', name: 'Bob', state: 'TX', privacyLevel: 'full' });
+      await setDoc(doc(db, 'directory/lakshmi'), { uid: 'lakshmi', name: 'Lakshmi', state: 'CA', privacyLevel: 'limited' });
+      await setDoc(doc(db, 'memberIndex/bob'), { status: 'approved', access: true });
+      await setDoc(doc(db, 'memberIndex/dana'), { status: 'pending', access: false });
+    });
+  });
+
+  it('lets an approved member read and list the directory', async () => {
+    const db = asMember('bob', 'bob@example.com');
+    await assertSucceeds(getDoc(doc(db, 'directory/lakshmi')));
+    await assertSucceeds(getDocs(collection(db, 'directory')));
+  });
+
+  it('refuses a member whose access flag is false', async () => {
+    const db = asMember('dana', 'dana@example.com');
+    await assertFails(getDocs(collection(db, 'directory')));
+  });
+
+  it('refuses a member with no index entry at all', async () => {
+    const db = asMember('stranger', 'stranger@example.com');
+    await assertFails(getDocs(collection(db, 'directory')));
+  });
+
+  it('refuses an unauthenticated read', async () => {
+    await assertFails(getDocs(collection(asAnon(), 'directory')));
+  });
+
+  it('lets an admin read it', async () => {
+    await assertSucceeds(getDocs(collection(asMember('admin1', ADMIN), 'directory')));
+  });
+
+  // The projection is the security boundary; a client that could write to it
+  // could publish fields a member asked us to withhold.
+  it('refuses every client write, including from an admin', async () => {
+    await assertFails(setDoc(doc(asMember('bob', 'bob@example.com'), 'directory/bob'), { name: 'x' }));
+    await assertFails(setDoc(doc(asMember('admin1', ADMIN), 'directory/bob'), { name: 'x' }));
+    await assertFails(deleteDoc(doc(asMember('admin1', ADMIN), 'directory/bob')));
+  });
+});
+
+describe('memberIndex — the access oracle', () => {
+  it('lets a member read their own entry', async () => {
+    await assertSucceeds(getDoc(doc(asMember('bob', 'bob@example.com'), 'memberIndex/bob')));
+  });
+
+  it('refuses reading someone else entry', async () => {
+    await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'memberIndex/dana')));
+  });
+
+  // Writable memberIndex would mean self-granting directory access.
+  it('refuses every client write', async () => {
+    await assertFails(setDoc(doc(asMember('dana', 'dana@example.com'), 'memberIndex/dana'), { access: true }));
+    await assertFails(setDoc(doc(asMember('admin1', ADMIN), 'memberIndex/dana'), { access: true }));
+  });
+});
+
 describe('collections with no client access', () => {
   it('refuses reads of the unused members collection', async () => {
     await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'members/bob')));

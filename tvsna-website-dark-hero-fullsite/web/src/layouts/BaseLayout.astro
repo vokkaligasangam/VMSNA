@@ -6,6 +6,7 @@ import '../styles/base.css';
 
 import SiteHeader from '../components/layout/SiteHeader.astro';
 import SiteFooter from '../components/layout/SiteFooter.astro';
+import AuthBoot from '../components/gate/AuthBoot.astro';
 import { site } from '../config/site';
 
 interface Props {
@@ -44,6 +45,7 @@ const orgJsonLd = {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <AuthBoot />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />

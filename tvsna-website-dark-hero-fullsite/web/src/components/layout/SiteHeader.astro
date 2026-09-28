@@ -27,8 +27,18 @@ const isCurrent = (href: string) =>
         }
       </ul>
       <div class="hdr__actions">
-        <a class="hdr__login" href="/login/">Member log in</a>
-        <a class="btn btn--primary btn--sm" href="/join/">Join VMSNA</a>
+        <span data-gate="guest rejected unknown">
+          <a class="hdr__login" href="/login/">Member log in</a>
+        </span>
+        <span data-gate="guest rejected unknown">
+          <a class="btn btn--primary btn--sm" href="/join/">Join VMSNA</a>
+        </span>
+        <span data-gate="member pending">
+          <a class="hdr__login" href="/directory/">Directory</a>
+        </span>
+        <span data-gate="member pending">
+          <a class="btn btn--ghost btn--sm" href="/account/">My account</a>
+        </span>
       </div>
     </nav>
 
@@ -58,8 +68,18 @@ const isCurrent = (href: string) =>
           <li><a href="/contact/">Contact</a></li>
         </ul>
         <div class="drawer__actions">
-          <a class="btn btn--ghost" href="/login/">Member log in</a>
-          <a class="btn btn--primary" href="/join/">Join VMSNA</a>
+          <span data-gate="guest rejected unknown">
+            <a class="btn btn--ghost" href="/login/">Member log in</a>
+          </span>
+          <span data-gate="guest rejected unknown">
+            <a class="btn btn--primary" href="/join/">Join VMSNA</a>
+          </span>
+          <span data-gate="member pending">
+            <a class="btn btn--ghost" href="/directory/">Member directory</a>
+          </span>
+          <span data-gate="member pending">
+            <a class="btn btn--primary" href="/account/">My account</a>
+          </span>
         </div>
       </nav>
     </details>

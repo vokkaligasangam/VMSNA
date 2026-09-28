@@ -1,0 +1,119 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Application received"
+  kicker="Thank you"
+  lead="Your membership application is with us. There is one more step before the committee sees it."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container container-narrow">
+      <ol class="steps">
+        <li class="steps__done">
+          <h2>Application submitted</h2>
+          <p>We have your details.</p>
+        </li>
+        <li class="steps__now">
+          <h2>Verify your email</h2>
+          <p>
+            We have sent you a verification link. Please click it — your
+            application is not passed to the committee until you do.
+          </p>
+          <p class="steps__spam">
+            If it is not in your inbox within a few minutes, check your spam or
+            junk folder. Marking it as "not spam" helps our later emails reach
+            you.
+          </p>
+        </li>
+        <li>
+          <h2>Committee review</h2>
+          <p>
+            A committee member checks every application. We will email you when
+            yours has been reviewed, usually within a week.
+          </p>
+        </li>
+        <li>
+          <h2>Set up your membership</h2>
+          <p>
+            Once approved you will get a link to activate your membership and
+            reach the member directory.
+          </p>
+        </li>
+      </ol>
+
+      <p class="cta">
+        <a class="btn btn--ghost" href="/login/">Go to sign in</a>
+        <a class="btn btn--ghost" href="/">Back to the homepage</a>
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-5);
+  }
+
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 3.25rem;
+  }
+
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    color: var(--text-muted);
+    font-size: var(--t-sm);
+    font-weight: 500;
+  }
+
+  .steps__done::before {
+    content: '✓';
+    background: var(--paddy);
+    border-color: var(--paddy);
+    color: #fff;
+  }
+
+  .steps__now::before {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--soil);
+  }
+
+  .steps h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
+
+  .steps p + p {
+    margin-top: var(--s-2);
+  }
+
+  .steps__spam {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .cta {
+    margin-top: var(--s-7);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+</style>

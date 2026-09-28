@@ -1,0 +1,307 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Apply for membership"
+  kicker="Join the Sangam"
+  lead="Tell us about your family. A member of the committee reviews every application — you are not charged anything at this stage."
+  description="Apply to join Vokkaliga Mahajana Sangam North America. Membership is open to Tamil Nadu Vokkaliga families across the US, Canada and India."
+>
+  <section class="section">
+    <div class="container container-narrow">
+      <div data-gate="member pending" class="already">
+        <p class="status" data-tone="info">
+          You are already signed in. <a href="/account/">Go to your account</a>.
+        </p>
+      </div>
+
+      <div data-gate="guest rejected unknown">
+        <form id="join-form" class="card" novalidate>
+          <p class="status" data-form-status hidden></p>
+
+          <fieldset class="group">
+            <legend>About you</legend>
+            <div class="field">
+              <label for="name">Full name</label>
+              <input id="name" name="name" type="text" required autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="origin_self">Native place</label>
+              <input id="origin_self" name="origin_self" type="text" placeholder="Odaipatti, Theni district" />
+              <span class="field__hint">The village or district your family comes from. Other members search by this.</span>
+            </div>
+            <div class="field">
+              <label for="profession">Profession, and anything you can offer the community <span class="field__optional">(optional)</span></label>
+              <input id="profession" name="profession" type="text" placeholder="Paediatrician · can teach classical dance" />
+            </div>
+            <div class="field">
+              <label for="profile_url">LinkedIn, business or personal links <span class="field__optional">(optional)</span></label>
+              <input id="profile_url" name="profile_url" type="text" placeholder="https://linkedin.com/in/yourname, https://yoursite.com" />
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Your family</legend>
+            <div class="field">
+              <label for="spouse_name">Spouse's name <span class="field__optional">(optional)</span></label>
+              <input id="spouse_name" name="spouse_name" type="text" />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="spouse_email">Spouse's email <span class="field__optional">(optional)</span></label>
+                <input id="spouse_email" name="spouse_email" type="email" />
+              </div>
+              <div class="field">
+                <label for="spouse_phone">Spouse's phone <span class="field__optional">(optional)</span></label>
+                <input id="spouse_phone" name="spouse_phone" type="tel" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="origin_spouse">Spouse's native place <span class="field__optional">(optional)</span></label>
+              <input id="origin_spouse" name="origin_spouse" type="text" placeholder="Thadagam, Coimbatore district" />
+            </div>
+            <div class="field">
+              <label for="spouse_profession">Spouse's profession and offerings <span class="field__optional">(optional)</span></label>
+              <input id="spouse_profession" name="spouse_profession" type="text" />
+            </div>
+            <div class="field">
+              <label for="spouse_profile_url">Spouse's links <span class="field__optional">(optional)</span></label>
+              <input id="spouse_profile_url" name="spouse_profile_url" type="text" />
+            </div>
+            <div class="field">
+              <label for="children_details">Children <span class="field__optional">(optional)</span></label>
+              <textarea id="children_details" name="children_details" rows="3" placeholder="Names and ages"></textarea>
+              <span class="field__hint">Used for youth programmes and scholarships. Never shown in the member directory.</span>
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Where you live</legend>
+            <div class="field">
+              <label for="street">Street address</label>
+              <input id="street" name="street" type="text" required autocomplete="street-address" />
+              <span class="field__hint">Never shown to other members. Used for chapter assignment and postal mail.</span>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="city">City</label>
+                <input id="city" name="city" type="text" required autocomplete="address-level2" />
+              </div>
+              <div class="field">
+                <label for="country">Country</label>
+                <select id="country" name="country" required>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="IN">India</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="state" id="state-label">State</label>
+                <input id="state" name="state" type="text" required autocomplete="address-level1" />
+              </div>
+              <div class="field">
+                <label for="zip" id="zip-label">ZIP code</label>
+                <input id="zip" name="zip" type="text" required autocomplete="postal-code" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="phone">Phone <span class="field__optional">(optional)</span></label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" />
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Directory privacy</legend>
+            <p class="group__intro">
+              What may other approved members see about you? Your street address,
+              postcode and any details about your children are never shown, at
+              either setting. You can change this at any time.
+            </p>
+            <label class="choice">
+              <input type="radio" name="privacy" value="full" checked />
+              <span>
+                <strong>Full profile</strong><br />
+                <span class="choice__note">Name, city and state, native place, profession and contact details.</span>
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="privacy" value="limited" />
+              <span>
+                <strong>Limited profile</strong><br />
+                <span class="choice__note">Name and state only. Nothing else is sent to other members' browsers.</span>
+              </span>
+            </label>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Your account</legend>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required autocomplete="email" />
+              <span class="field__hint">You will be asked to verify this address before the committee sees your application.</span>
+            </div>
+            <div class="field">
+              <label for="password">Choose a password</label>
+              <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" />
+              <span class="field__hint">At least 8 characters.</span>
+            </div>
+          </fieldset>
+
+          <button class="btn btn--primary" type="submit">Submit application</button>
+          <p class="foot">
+            Already applied? <a href="/login/">Sign in instead</a>.
+          </p>
+        </form>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth } from '../lib/authStore';
+  startAuth();
+
+  const form = document.getElementById('join-form') as HTMLFormElement | null;
+  if (form) {
+    const box = form.querySelector<HTMLElement>('[data-form-status]')!;
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const country = document.getElementById('country') as HTMLSelectElement;
+    const stateLabel = document.getElementById('state-label')!;
+    const zipLabel = document.getElementById('zip-label')!;
+
+    // "CA" in a free-text state box is ambiguous between California and Canada,
+    // so the labels follow the selected country.
+    const regionNames: Record<string, [string, string]> = {
+      US: ['State', 'ZIP code'],
+      CA: ['Province', 'Postal code'],
+      IN: ['State', 'PIN code'],
+    };
+    country.addEventListener('change', () => {
+      const [s, z] = regionNames[country.value] ?? regionNames.US;
+      stateLabel.textContent = s;
+      zipLabel.textContent = z;
+    });
+
+    function say(tone: 'success' | 'error' | 'info', message: string) {
+      box.hidden = false;
+      box.dataset.tone = tone;
+      box.textContent = message;
+      box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+
+      submit.disabled = true;
+      submit.textContent = 'Submitting…';
+
+      const f = new FormData(form);
+      const email = String(f.get('email')).trim();
+      const password = String(f.get('password'));
+
+      const application = {
+        name: String(f.get('name')).trim(),
+        nativePlaceSelf: String(f.get('origin_self') ?? '').trim(),
+        spouseName: String(f.get('spouse_name') ?? '').trim(),
+        nativePlaceSpouse: String(f.get('origin_spouse') ?? '').trim(),
+        email,
+        spouseEmail: String(f.get('spouse_email') ?? '').trim(),
+        childrenDetails: String(f.get('children_details') ?? '').trim(),
+        street: String(f.get('street')).trim(),
+        city: String(f.get('city')).trim(),
+        state: String(f.get('state')).trim(),
+        country: String(f.get('country')),
+        zip: String(f.get('zip')).trim(),
+        phone: String(f.get('phone') ?? '').trim(),
+        spousePhone: String(f.get('spouse_phone') ?? '').trim(),
+        profession: String(f.get('profession') ?? '').trim(),
+        profileUrl: String(f.get('profile_url') ?? '').trim(),
+        spouseProfession: String(f.get('spouse_profession') ?? '').trim(),
+        spouseProfileUrl: String(f.get('spouse_profile_url') ?? '').trim(),
+        privacyLevel: String(f.get('privacy') ?? 'full'),
+        status: 'pending',
+        adminNotified: false,
+      };
+
+      try {
+        const [{ auth, db }, authMod, fsMod] = await Promise.all([
+          import('../lib/firebase'),
+          import('firebase/auth'),
+          import('firebase/firestore'),
+        ]);
+
+        const cred = await authMod.createUserWithEmailAndPassword(auth(), email, password);
+        await authMod.sendEmailVerification(cred.user);
+
+        await fsMod.addDoc(fsMod.collection(db(), 'membershipApplications'), {
+          ...application,
+          userId: cred.user.uid,
+          submittedAt: fsMod.serverTimestamp(),
+        });
+
+        // Signed out deliberately: the account is unusable until verified, and
+        // leaving them signed in makes the next screen misleading.
+        await authMod.signOut(auth());
+        location.assign('/join/submitted/');
+      } catch (error: any) {
+        const code = error?.code ?? '';
+        say(
+          'error',
+          code === 'auth/email-already-in-use'
+            ? 'That email already has an account. Sign in instead, or use "Forgot your password?" on the sign-in page.'
+            : code === 'auth/weak-password'
+              ? 'Please choose a password of at least 8 characters.'
+              : code === 'auth/invalid-email'
+                ? 'That email address does not look right.'
+                : 'Something went wrong submitting your application. Please try again, or email info@vmsna.org.',
+        );
+        submit.disabled = false;
+        submit.textContent = 'Submit application';
+      }
+    });
+  }
+</script>
+
+<style>
+  .group {
+    border: 0;
+    padding: 0;
+    margin: 0 0 var(--s-7);
+  }
+
+  .group legend {
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+    padding: 0;
+    margin-bottom: var(--s-4);
+    width: 100%;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: var(--s-2);
+  }
+
+  .group__intro {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--s-4);
+    max-width: 58ch;
+  }
+
+  .choice__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .foot {
+    margin-top: var(--s-4);
+    font-size: var(--t-sm);
+  }
+
+  .already {
+    max-width: 52ch;
+  }
+</style>

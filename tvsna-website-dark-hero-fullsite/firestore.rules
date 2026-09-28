@@ -43,6 +43,20 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
 
+    // memberIndex is written only by Cloud Functions and holds nothing but a
+    // status and an access boolean, so it is cheap to consult from a rule.
+    // It exists because membershipApplications has random document IDs, which
+    // means a rule cannot look up the caller's own record.
+    function hasDirectoryAccess() {
+      return signedIn() && (
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/memberIndex/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/memberIndex/$(request.auth.uid)).data.access == true
+        )
+      );
+    }
+
     // Fields an applicant may edit on their own record. status, adminNotified,
     // approvedBy/At and rejectedBy/At are deliberately absent: without this
     // restriction a pending member could simply write status = 'approved'
@@ -72,19 +86,16 @@ service cloud.firestore {
       allow create: if isOwner(request.resource.data.userId)
                     && request.resource.data.status == 'pending';
 
-      // Own record, or admin, or an approved record.
+      // Own record, or admin.
       //
-      // The third disjunct is what makes the member directory's
-      // where('status','==','approved') query provable, and therefore legal.
-      // Without it Firestore rejects the whole query and the directory is
-      // empty for every non-admin.
-      //
-      // REMAINING GAP: this still lets a signed-in member read every field of
-      // every approved record directly from the API, so a member who chose a
-      // limited profile is only protected by the client-side projection in
-      // dashboard.html. Closing this properly requires the server-written
-      // directory/{uid} projection, which is Phase 2 — it cannot be fixed here
-      // without breaking the live directory.
+      // TRANSITIONAL — REMOVE THE THIRD DISJUNCT.
+      // The approved-record read is the remaining API-level exposure: it lets
+      // any signed-in member read every field of every approved application,
+      // including the ones a limited-profile member asked us to withhold.
+      // It stays only until the directory projection is populated and the new
+      // client is live, because removing it first empties the directory for
+      // every member. The removal steps are in docs/RUNBOOK-directory.md and
+      // should be a same-week follow-up, not a someday item.
       allow read: if (signedIn() && isOwner(resource.data.userId))
                   || isAdmin()
                   || (signedIn() && resource.data.status == 'approved');
@@ -95,6 +106,23 @@ service cloud.firestore {
                     || (isAdmin() && onlyChanged(adminEditable()));
 
       allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // The member directory as the client sees it. Written only by the
+    // projectMemberToDirectory function, which copies across just the fields a
+    // member's privacy level permits — so a limited profile contains a name
+    // and a state and nothing else, server-side. There is no field here for a
+    // client to over-fetch.
+    match /directory/{docId} {
+      allow read: if hasDirectoryAccess();
+      allow write: if false;
+    }
+
+    // Access oracle for the rule above. Function-written; a member may read
+    // their own to find out whether they are approved.
+    match /memberIndex/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
     }
 
     // Legacy collection: rules existed but no code ever read or wrote it.

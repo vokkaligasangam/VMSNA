@@ -194,6 +194,53 @@ a:hover {
   transform: translateY(0);
 }
 
+/*
+  Gate states.
+
+  Every gated page prerenders all of its states as sibling regions and CSS
+  picks one, so the correct layout is present in the very first paint rather
+  than swapped in by JavaScript afterwards. display:contents means the wrapper
+  itself never affects layout.
+
+  These are presentational only. What a visitor can actually read is decided by
+  Firestore security rules; hiding a region here hides nothing from anyone who
+  opens devtools, and no gated region is ever rendered with real member data
+  server-side.
+*/
+[data-gate] {
+  display: none;
+}
+
+html[data-auth='guest'] [data-gate~='guest'],
+html[data-auth='pending'] [data-gate~='pending'],
+html[data-auth='rejected'] [data-gate~='rejected'],
+html[data-auth='member'] [data-gate~='member'],
+html[data-auth='unknown'] [data-gate~='unknown'] {
+  display: contents;
+}
+
+/* Before the hint runs (no JS at all), show the guest view rather than nothing. */
+html:not([data-auth]) [data-gate~='guest'] {
+  display: contents;
+}
+
+.gate-loading {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-6) 0;
+}
+
+.gate-loading__bar {
+  height: 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunk);
+  max-width: 28rem;
+}
+
+.gate-loading__bar:nth-child(2) {
+  max-width: 20rem;
+}
+
 /* Buttons — global because Astro scopes component styles. */
 
 .btn {
@@ -250,6 +297,18 @@ a:hover {
   color: var(--soil);
 }
 
+.btn--danger {
+  background: transparent;
+  border-color: #b4482a;
+  color: #8f3419;
+}
+
+.btn--danger:hover {
+  background: #b4482a;
+  border-color: #b4482a;
+  color: #fff;
+}
+
 .btn--ghost {
   background: transparent;
   border-color: var(--line-strong);
@@ -285,6 +344,114 @@ a:hover {
 .on-dark .btn--primary,
 .on-dark .btn--primary:hover {
   color: #fff;
+}
+
+/* Forms — global so every page shares one field treatment. */
+
+.field {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
+.field > label,
+.fieldset > legend {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.field__hint {
+  font-size: var(--t-xs);
+  color: var(--text-muted);
+}
+
+.field__optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/*
+  Controls are styled explicitly. The old stylesheet set width and padding but
+  no colours, so every field rendered in the browser's light default chrome on
+  a dark page — which is why each one carried a six-property inline style.
+*/
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  padding: var(--s-3);
+  background: var(--cream);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-sm);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--text-muted);
+}
+
+.field input[readonly] {
+  background: var(--surface-sunk);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field-row {
+  display: grid;
+  gap: var(--s-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+}
+
+.fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.choice {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  padding: var(--s-2) 0;
+  cursor: pointer;
+}
+
+.choice input {
+  margin-top: 0.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+}
+
+.status {
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-sm);
+}
+
+.status[data-tone='success'] {
+  background: #e7efe6;
+  color: #24452c;
+}
+
+.status[data-tone='error'] {
+  background: #f6e3dc;
+  color: #7a2c12;
+}
+
+.status[data-tone='info'] {
+  background: var(--surface-sunk);
+  color: var(--text-body);
 }
 
 /* Cards */
