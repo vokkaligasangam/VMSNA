@@ -19,6 +19,7 @@ import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { requireAdmin, ChunkedWriter } from "./lib/admin.js";
+import { hasMemberAccess } from "./lib/access.js";
 
 /** Fields the directory may expose, per privacy level. */
 const VISIBLE = {
@@ -93,7 +94,8 @@ export const projectMemberToDirectory = onDocumentWritten(
     const spouse = db.collection("directory").doc(`${uid}_s1`);
     const index = db.collection("memberIndex").doc(uid);
 
-    const approved = after?.status === "approved";
+    // One definition of access, shared with the rules and the client.
+    const approved = after ? hasMemberAccess(after) : false;
 
     if (!approved) {
       // Rejected, reverted to pending, or deleted: remove from the directory

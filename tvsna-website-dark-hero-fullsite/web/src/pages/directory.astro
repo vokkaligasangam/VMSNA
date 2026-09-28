@@ -67,6 +67,21 @@ import PageLayout from '../layouts/PageLayout.astro';
         </div>
       </div>
 
+      <div data-gate="unpaid">
+        <div class="notice-card">
+          <h2>Activate your membership to open the directory</h2>
+          <p>
+            Your application has been approved — thank you. One step left:
+            choose a membership, and the directory and the rest of the member
+            benefits open up.
+          </p>
+          <p class="notice-card__cta">
+            <a class="btn btn--primary" href="/membership/activate/">Activate membership</a>
+            <a class="btn btn--ghost" href="/membership/">What you get</a>
+          </p>
+        </div>
+      </div>
+
       <div data-gate="rejected">
         <div class="notice-card">
           <h2>We could not approve this application</h2>

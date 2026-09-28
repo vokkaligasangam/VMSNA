@@ -11,6 +11,7 @@
 */
 import type { User } from 'firebase/auth';
 import { applyGate, writeHint, clearHint, type GateState } from './authHint';
+import { hasMemberAccess, needsActivation } from './access';
 
 export interface MemberRecord {
   docId: string;
@@ -147,9 +148,19 @@ export async function startAuth(): Promise<void> {
       console.error('Could not load membership record', error);
     }
 
+    /* One derivation, shared with the functions and the rules. While payment
+       enforcement is off, hasMemberAccess returns true for every approved
+       member, so 'unpaid' simply never occurs. */
     const status = member?.data?.status;
+    const record = member?.data ?? {};
     const gate: GateState =
-      status === 'approved' ? 'member' : status === 'rejected' ? 'rejected' : 'pending';
+      status === 'rejected'
+        ? 'rejected'
+        : hasMemberAccess(record)
+          ? 'member'
+          : status === 'approved' && needsActivation(record)
+            ? 'unpaid'
+            : 'pending';
 
     publish({ ready: true, user, verified: true, state: gate, member, isAdmin });
   });

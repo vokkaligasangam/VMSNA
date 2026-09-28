@@ -143,6 +143,31 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Payment records, written by the Stripe webhook. A member may see their
+    // own; nothing here is client-writable, because a client that could write
+    // a payment could grant itself a membership.
+    match /payments/{docId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // Donations may be anonymous, so there is no owner to read them back.
+    match /donations/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Webhook idempotency ledger and its failure log. No client has any
+    // business reading or writing either.
+    match /stripeEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /stripeEventFailures/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Source of truth for admin identity. Written only by setAdminRole, which
     // audits every change and refuses to remove the last super administrator.
     // A client that could write here could make itself an admin.

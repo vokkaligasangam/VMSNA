@@ -15,7 +15,7 @@ export const HINT_KEY = 'vmsna.authHint';
 export const HINT_VERSION = 1;
 const TTL_MS = 12 * 60 * 60 * 1000;
 
-export type GateState = 'unknown' | 'guest' | 'pending' | 'rejected' | 'member';
+export type GateState = 'unknown' | 'guest' | 'pending' | 'rejected' | 'unpaid' | 'member';
 
 export interface AuthHint {
   v: number;

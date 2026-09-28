@@ -214,6 +214,7 @@ a:hover {
 html[data-auth='guest'] [data-gate~='guest'],
 html[data-auth='pending'] [data-gate~='pending'],
 html[data-auth='rejected'] [data-gate~='rejected'],
+html[data-auth='unpaid'] [data-gate~='unpaid'],
 html[data-auth='member'] [data-gate~='member'],
 html[data-auth='unknown'] [data-gate~='unknown'] {
   display: contents;

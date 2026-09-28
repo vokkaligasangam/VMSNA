@@ -51,7 +51,7 @@ const editable = [
         </div>
       </div>
 
-      <div data-gate="member pending">
+      <div data-gate="member pending unpaid">
         <div data-gate="pending">
           <div class="notice-card notice-card--flush">
             <h2>Your application is under review</h2>
@@ -130,7 +130,9 @@ const editable = [
 
             <div class="panel">
               <h2>Membership</h2>
-              <p class="side__note">Status: <strong data-show="status">—</strong></p>
+              <p class="side__note">Application: <strong data-show="status">—</strong></p>
+              <p class="side__note">Membership: <strong data-show="membership">—</strong></p>
+              <p class="side__note"><a href="/account/billing/">Billing and receipts</a></p>
               <p class="side__note">
                 <button class="btn btn--ghost btn--sm" type="button" data-signout>Sign out</button>
               </p>
@@ -156,6 +158,7 @@ const editable = [
 
 <script>
   import { startAuth, onAuth, signOutNow, getAuthState } from '../lib/authStore';
+  import { membershipLabel } from '../lib/access';
 
   startAuth();
 
@@ -179,7 +182,8 @@ const editable = [
     show('address', [data.street, data.city, data.state, data.zip].filter(Boolean).join(', '));
     show('spouseName', data.spouseName);
     show('childrenDetails', data.childrenDetails);
-    show('status', data.status === 'approved' ? 'Approved member' : 'Application pending');
+    show('status', data.status === 'approved' ? 'Approved' : data.status === 'rejected' ? 'Not approved' : 'Pending review');
+    show('membership', membershipLabel(data));
 
     if (form) {
       (document.getElementById('f-email') as HTMLInputElement).value = data.email ?? '';

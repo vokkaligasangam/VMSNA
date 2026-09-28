@@ -1,0 +1,304 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Billing"
+  kicker="Your membership"
+  lead="Your membership status, receipts, and how to change or cancel it."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container">
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span><span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="panel">
+          <h2>Please sign in</h2>
+          <p class="panel__note">Sign in to see your membership and receipts.</p>
+          <p><a class="btn btn--primary" href="/login/?next=/account/billing/">Sign in</a></p>
+        </div>
+      </div>
+
+      <div data-gate="member pending rejected">
+        <div class="billing">
+          <div>
+            <section class="panel">
+              <h2>Membership</h2>
+              <dl class="facts">
+                <div><dt>Status</dt><dd data-bill="state">—</dd></div>
+                <div><dt>Tier</dt><dd data-bill="tier">—</dd></div>
+                <div><dt>Renewal</dt><dd data-bill="renewal">—</dd></div>
+              </dl>
+              <p class="status" data-bill-status hidden></p>
+              <div class="panel__actions">
+                <button class="btn btn--primary btn--sm" type="button" id="portal" hidden>
+                  Manage or cancel
+                </button>
+                <a class="btn btn--primary btn--sm" href="/membership/activate/" id="activate" hidden>
+                  Activate your membership
+                </a>
+              </div>
+              <p class="panel__note" id="portal-note" hidden>
+                Card changes, cancellation and past invoices are handled on
+                Stripe's own billing pages.
+              </p>
+            </section>
+
+            <section class="panel">
+              <h2>Receipts</h2>
+              <p class="panel__note" id="receipts-empty">No payments recorded yet.</p>
+              <div class="table-wrap" hidden id="receipts-wrap">
+                <table class="receipts">
+                  <caption class="visually-hidden">Your membership payments</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Date</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody id="receipts"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <aside class="panel">
+            <h2>Questions about billing</h2>
+            <p class="panel__note">
+              If a payment looks wrong, or you need a receipt for a previous
+              year, <a href="/contact/">get in touch</a> and the treasurer will
+              sort it out.
+            </p>
+            <p class="panel__note">
+              Membership dues are separate from donations. If you were looking
+              for a tax receipt for a donation, that comes separately.
+            </p>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth } from '../../lib/authStore';
+  import { membershipLabel, formatRenewal, needsActivation } from '../../lib/access';
+  import { readableError } from '../../lib/adminApi';
+
+  startAuth();
+
+  const set = (key: string, value: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-bill="${key}"]`);
+    if (el) el.textContent = value || '—';
+  };
+
+  function say(tone: 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>('[data-bill-status]');
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  document.getElementById('portal')?.addEventListener('click', async (event) => {
+    const btn = event.currentTarget as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = 'Opening Stripe…';
+    try {
+      const [{ functions }, { httpsCallable }] = await Promise.all([
+        import('../../lib/firebase'),
+        import('firebase/functions'),
+      ]);
+      const result = await httpsCallable(functions(), 'createPortalSession')({});
+      const { url } = result.data as { url: string };
+      location.assign(url);
+    } catch (error) {
+      say('error', readableError(error));
+      btn.disabled = false;
+      btn.textContent = 'Manage or cancel';
+    }
+  });
+
+  async function loadReceipts(uid: string) {
+    try {
+      const [{ db }, fs] = await Promise.all([
+        import('../../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const snap = await fs.getDocs(
+        fs.query(fs.collection(db(), 'payments'), fs.where('uid', '==', uid), fs.orderBy('created', 'desc')),
+      );
+      if (snap.empty) return;
+
+      const body = document.getElementById('receipts')!;
+      body.replaceChildren();
+      for (const doc of snap.docs) {
+        const p = doc.data();
+        const tr = document.createElement('tr');
+
+        const date = document.createElement('th');
+        date.scope = 'row';
+        date.textContent = p.created?.toDate?.()?.toLocaleDateString('en-US', {
+          day: 'numeric', month: 'short', year: 'numeric',
+        }) ?? '—';
+        tr.append(date);
+
+        const amount = document.createElement('td');
+        amount.textContent = typeof p.amount === 'number'
+          ? `${(p.amount / 100).toFixed(2)} ${String(p.currency ?? '').toUpperCase()}`
+          : '—';
+        tr.append(amount);
+
+        const status = document.createElement('td');
+        status.textContent = String(p.status ?? '—');
+        tr.append(status);
+
+        const link = document.createElement('td');
+        if (p.hostedInvoiceUrl) {
+          const a = document.createElement('a');
+          a.href = p.hostedInvoiceUrl;
+          a.rel = 'noopener';
+          a.textContent = 'View';
+          link.append(a);
+        } else {
+          link.textContent = '—';
+        }
+        tr.append(link);
+        body.append(tr);
+      }
+      document.getElementById('receipts-empty')!.hidden = true;
+      document.getElementById('receipts-wrap')!.hidden = false;
+    } catch (error) {
+      console.error('Could not load receipts', error);
+    }
+  }
+
+  onAuth((s) => {
+    if (!s.ready || !s.member) return;
+    const record = s.member.data;
+
+    set('state', membershipLabel(record));
+    set('tier', record.membership?.tier ?? '—');
+    set('renewal', formatRenewal(record) ?? '—');
+
+    const hasCustomer = Boolean(record.stripeCustomerId);
+    const portal = document.getElementById('portal') as HTMLButtonElement | null;
+    const activate = document.getElementById('activate');
+    if (portal) portal.hidden = !hasCustomer;
+    if (document.getElementById('portal-note')) {
+      document.getElementById('portal-note')!.hidden = !hasCustomer;
+    }
+    if (activate) activate.hidden = !needsActivation(record);
+
+    if (record.membership?.grandfathered) {
+      say('info', 'You are a founding member — your membership is complimentary, with nothing to pay.');
+    } else if (record.membership?.state === 'past_due') {
+      say('error', 'The last payment did not go through. Stripe will retry automatically; you can also update your card below. Your access continues in the meantime.');
+    } else if (record.membership?.state === 'grace') {
+      say('info', 'Your membership has ended. Access continues for a short grace period — renew any time to keep it.');
+    }
+
+    if (s.user) loadReceipts(s.user.uid);
+  });
+</script>
+
+<style>
+  .billing {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 58rem) {
+    .billing {
+      grid-template-columns: 1.6fr 1fr;
+    }
+  }
+
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .panel + .panel {
+    margin-top: var(--s-4);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .panel__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-top: var(--s-3);
+  }
+
+  .panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .facts {
+    display: grid;
+    gap: var(--s-3) var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  }
+
+  .facts dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin-top: var(--s-4);
+  }
+
+  .receipts {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--t-sm);
+    min-width: 28rem;
+  }
+
+  .receipts th,
+  .receipts td {
+    text-align: left;
+    padding: var(--s-3);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .receipts thead th {
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .receipts tbody th {
+    font-family: var(--font-sans);
+    font-weight: 400;
+  }
+</style>

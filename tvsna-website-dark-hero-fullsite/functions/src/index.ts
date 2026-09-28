@@ -20,6 +20,9 @@ export { deleteMyAccount } from "./account.js";
 export { syncRoleClaims, setAdminRole, listAdminRoles, whoAmI } from "./roles.js";
 export { notifyHelpRequest, notifyContactMessage } from "./inbox.js";
 export { getVerificationStatuses, diagnoseMember, requeueAdminNotification } from "./adminTools.js";
+export { createCheckoutSession, createPortalSession, createDonationSession } from "./stripe/sessions.js";
+export { stripeWebhook } from "./stripe/webhook.js";
+export { reconcileSubscriptions, grandfatherMemberships } from "./stripe/reconcile.js";
 
 // Initialize Firebase Admin
 admin.initializeApp();

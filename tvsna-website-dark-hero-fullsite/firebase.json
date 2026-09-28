@@ -135,6 +135,15 @@
           }
         ]
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/stripe/webhook",
+        "function": {
+          "functionId": "stripeWebhook",
+          "region": "us-central1"
+        }
+      }
     ]
   },
   "emulators": {

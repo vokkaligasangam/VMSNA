@@ -318,6 +318,65 @@ describe('admin identity', () => {
   });
 });
 
+describe('payments and Stripe records', () => {
+  before(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'payments/in_1'), { uid: 'bob', amount: 7500, currency: 'usd', status: 'paid' });
+      await setDoc(doc(db, 'payments/in_2'), { uid: 'carol', amount: 4000, currency: 'usd', status: 'paid' });
+      await setDoc(doc(db, 'donations/cs_1'), { uid: null, amount: 5000, currency: 'usd' });
+      await setDoc(doc(db, 'stripeEvents/evt_1'), { type: 'invoice.paid' });
+      await setDoc(doc(db, 'stripeEventFailures/evt_2'), { type: 'invoice.paid', attempts: 3 });
+    });
+  });
+
+  it('lets a member read their own payment but not another member’s', async () => {
+    const db = asMember('bob', 'bob@example.com');
+    await assertSucceeds(getDoc(doc(db, 'payments/in_1')));
+    await assertFails(getDoc(doc(db, 'payments/in_2')));
+  });
+
+  // A writable payments collection would mean self-granting a membership.
+  it('refuses every client write to payments', async () => {
+    await assertFails(setDoc(doc(asMember('bob', 'bob@example.com'), 'payments/in_3'), { uid: 'bob', amount: 1 }));
+    await assertFails(setDoc(doc(asMember('admin1', ADMIN), 'payments/in_3'), { uid: 'bob', amount: 1 }));
+  });
+
+  it('keeps donations admin-only, since they may be anonymous', async () => {
+    await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'donations/cs_1')));
+    await assertSucceeds(getDoc(doc(asMember('admin1', ADMIN), 'donations/cs_1')));
+  });
+
+  // The idempotency ledger is what stops a replayed webhook being processed
+  // twice; no client has any business touching it.
+  it('hides the webhook ledger from everyone, including admins', async () => {
+    await assertFails(getDoc(doc(asMember('admin1', ADMIN), 'stripeEvents/evt_1')));
+    await assertFails(setDoc(doc(asMember('admin1', ADMIN), 'stripeEvents/evt_3'), { type: 'forged' }));
+  });
+
+  it('lets admins see webhook failures but not write them', async () => {
+    await assertSucceeds(getDoc(doc(asMember('admin1', ADMIN), 'stripeEventFailures/evt_2')));
+    await assertFails(setDoc(doc(asMember('admin1', ADMIN), 'stripeEventFailures/evt_4'), { attempts: 1 }));
+  });
+
+  // Payment standing is written only by the webhook and the reconciler.
+  it('refuses a member writing their own membership state', async () => {
+    const db = asMember('bob', 'bob@example.com');
+    await assertFails(
+      updateDoc(doc(db, 'membershipApplications/bob'), { membership: { state: 'active' } }),
+    );
+    await assertFails(updateDoc(doc(db, 'membershipApplications/bob'), { stripeCustomerId: 'cus_forged' }));
+  });
+
+  it('refuses even an admin writing membership state directly', async () => {
+    await assertFails(
+      updateDoc(doc(asMember('admin1', ADMIN), 'membershipApplications/bob'), {
+        membership: { state: 'active' },
+      }),
+    );
+  });
+});
+
 describe('collections with no client access', () => {
   it('refuses reads of the unused members collection', async () => {
     await assertFails(getDoc(doc(asMember('bob', 'bob@example.com'), 'members/bob')));

@@ -1,0 +1,300 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import { tiers } from '../../config/membership';
+---
+
+<PageLayout
+  title="Activate your membership"
+  kicker="Nearly there"
+  lead="Your application has been approved. Choose a membership to open the directory and the rest of the member benefits."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container">
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span><span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="note">
+          <h2>Please sign in</h2>
+          <p>Sign in to the account you applied with to activate your membership.</p>
+          <p class="note__cta"><a class="btn btn--primary" href="/login/?next=/membership/activate/">Sign in</a></p>
+        </div>
+      </div>
+
+      <div data-gate="pending">
+        <div class="note">
+          <h2>Your application is still being reviewed</h2>
+          <p>
+            We will email you when a committee member has looked at it. You are
+            not asked to pay anything until your application is approved.
+          </p>
+          <p class="note__cta"><a class="btn btn--ghost" href="/account/">Your account</a></p>
+        </div>
+      </div>
+
+      <div data-gate="rejected">
+        <div class="note">
+          <h2>This application was not approved</h2>
+          <p>Please <a href="/contact/">get in touch</a> if you would like to discuss it.</p>
+        </div>
+      </div>
+
+      <div data-gate="member">
+        <div id="already" class="note" hidden>
+          <h2>Your membership is already active</h2>
+          <p>There is nothing more to do.</p>
+          <p class="note__cta">
+            <a class="btn btn--primary" href="/directory/">Open the directory</a>
+            <a class="btn btn--ghost" href="/account/billing/">Manage billing</a>
+          </p>
+        </div>
+
+        <div id="chooser">
+          <p class="status" data-pay-status hidden></p>
+
+          <div class="region">
+            <label for="currency">Paying from</label>
+            <select id="currency">
+              <option value="usd">United States (USD)</option>
+              <option value="cad">Canada (CAD)</option>
+              <option value="inr">India (INR)</option>
+            </select>
+            <p class="region__note" id="region-note" hidden>
+              Recurring card payments from Indian cards are unreliable under RBI
+              e-mandate rules, so only the one-time Life membership is offered
+              for India.
+            </p>
+          </div>
+
+          <ul class="tiers">
+            {
+              tiers.map((t) => (
+                <li class={`tier ${t.popular ? 'tier--popular' : ''}`} data-tier={t.id} data-recurring={t.id === 'life' ? 'false' : 'true'}>
+                  <p class="tier__flag">{t.popular ? 'Most families choose this' : ''}</p>
+                  <h2>{t.name}</h2>
+                  <p class="tier__price">
+                    <span class="tier__amount">${t.price.toLocaleString('en-US')}</span>
+                    <span class="tier__cadence">{t.cadence === 'year' ? 'per year' : 'one time'}</span>
+                  </p>
+                  <p class="tier__blurb">{t.blurb}</p>
+                  <button class={`btn ${t.popular ? 'btn--primary' : 'btn--ghost'}`} type="button" data-checkout={t.id}>
+                    Choose {t.name}
+                  </button>
+                </li>
+              ))
+            }
+          </ul>
+
+          <p class="secure">
+            Payment is handled by Stripe. Card details are entered on Stripe's
+            own pages and never reach vmsna.org.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth } from '../../lib/authStore';
+  import { needsActivation } from '../../lib/access';
+  import { readableError } from '../../lib/adminApi';
+
+  startAuth();
+
+  const currency = document.getElementById('currency') as HTMLSelectElement | null;
+  const regionNote = document.getElementById('region-note');
+
+  function say(tone: 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>('[data-pay-status]');
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  /* India is Life-only. Showing that as a disabled card with a reason is
+     clearer than letting someone pick a tier and fail at checkout. */
+  function applyRegion() {
+    const india = currency?.value === 'inr';
+    if (regionNote) regionNote.hidden = !india;
+    document.querySelectorAll<HTMLElement>('[data-tier]').forEach((el) => {
+      const recurring = el.dataset.recurring === 'true';
+      const blocked = india && recurring;
+      el.classList.toggle('tier--unavailable', blocked);
+      const btn = el.querySelector('button');
+      if (btn) {
+        btn.disabled = blocked;
+        btn.textContent = blocked ? 'Not available for India' : `Choose ${el.querySelector('h2')?.textContent ?? ''}`.trim();
+      }
+    });
+  }
+
+  currency?.addEventListener('change', applyRegion);
+  applyRegion();
+
+  document.querySelectorAll<HTMLButtonElement>('[data-checkout]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const tier = btn.dataset.checkout!;
+      btn.disabled = true;
+      const label = btn.textContent;
+      btn.textContent = 'Opening Stripe…';
+      say('info', 'Taking you to Stripe’s secure checkout…');
+
+      try {
+        const [{ functions }, { httpsCallable }] = await Promise.all([
+          import('../../lib/firebase'),
+          import('firebase/functions'),
+        ]);
+        const result = await httpsCallable(
+          functions(),
+          'createCheckoutSession',
+        )({ tier, currency: currency?.value ?? 'usd' });
+        const { url } = result.data as { url: string };
+        if (!url) throw new Error('Stripe did not return a checkout URL.');
+        location.assign(url);
+      } catch (error) {
+        say('error', readableError(error));
+        btn.disabled = false;
+        btn.textContent = label ?? 'Choose';
+      }
+    }),
+  );
+
+  onAuth((s) => {
+    if (!s.ready || !s.member) return;
+    const active = !needsActivation(s.member.data);
+    const already = document.getElementById('already');
+    const chooser = document.getElementById('chooser');
+    if (already) already.hidden = !active;
+    if (chooser) chooser.hidden = active;
+  });
+</script>
+
+<style>
+  .note {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 54ch;
+  }
+
+  .note h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .note__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .region {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3);
+    margin-bottom: var(--s-5);
+  }
+
+  .region label {
+    font-size: var(--t-sm);
+    font-weight: 500;
+  }
+
+  .region select {
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    color: var(--text);
+    font-size: var(--t-sm);
+  }
+
+  .region__note {
+    flex-basis: 100%;
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    max-width: 60ch;
+  }
+
+  .tiers {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .tier {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    height: 100%;
+  }
+
+  .tier--popular {
+    border: 2px solid var(--terra);
+  }
+
+  .tier--unavailable {
+    opacity: 0.55;
+  }
+
+  .tier__flag {
+    min-height: 1.4em;
+    margin: 0;
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terra-dark);
+  }
+
+  .tier h2 {
+    font-size: var(--t-lg);
+  }
+
+  .tier__price {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+  }
+
+  .tier__amount {
+    font-family: var(--font-display);
+    font-size: var(--t-2xl);
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .tier__cadence,
+  .tier__blurb {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .tier__blurb {
+    font-size: var(--t-sm);
+    flex: 1;
+  }
+
+  .secure {
+    margin-top: var(--s-5);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

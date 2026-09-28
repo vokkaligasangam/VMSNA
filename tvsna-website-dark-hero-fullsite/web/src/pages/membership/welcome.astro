@@ -1,0 +1,95 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Welcome to VMSNA"
+  kicker="Your membership is active"
+  lead="Thank you — your membership is set up and the directory is open to you."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container container-narrow">
+      <p class="status" data-welcome-status data-tone="info">
+        Confirming your payment with Stripe…
+      </p>
+
+      <div class="next">
+        <h2>What you can do now</h2>
+        <ul>
+          <li><a href="/directory/">Search the member directory</a> — by profession, chapter or native place.</li>
+          <li><a href="/account/">Check your profile</a> and choose how much of it other members can see.</li>
+          <li><a href="/events/">See what is coming up</a> across the chapters.</li>
+        </ul>
+        <p class="next__note">
+          A receipt is on its way by email. You can change or cancel your
+          membership at any time from <a href="/account/billing/">billing</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth } from '../../lib/authStore';
+
+  startAuth();
+
+  const box = document.querySelector<HTMLElement>('[data-welcome-status]')!;
+
+  /*
+    The webhook is what actually activates the membership, and it may land a
+    moment after the browser returns from Stripe. Rather than claim success or
+    failure prematurely, watch the member's own record until it flips — then
+    force a token refresh so any claim-based gating updates too.
+  */
+  let settled = false;
+  const deadline = Date.now() + 20000;
+
+  onAuth(async (s) => {
+    if (!s.ready || !s.user || settled) return;
+
+    const poll = async () => {
+      if (settled) return;
+      const [{ db }, fs] = await Promise.all([
+        import('../../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const snap = await fs.getDocs(
+        fs.query(
+          fs.collection(db(), 'membershipApplications'),
+          fs.where('userId', '==', s.user!.uid),
+          fs.limit(1),
+        ),
+      );
+      const state = snap.docs[0]?.data()?.membership?.state;
+
+      if (state === 'active' || state === 'complimentary') {
+        settled = true;
+        box.dataset.tone = 'success';
+        box.textContent = 'Payment confirmed. Your membership is active.';
+        await s.user!.getIdToken(true);
+        return;
+      }
+      if (Date.now() > deadline) {
+        settled = true;
+        box.dataset.tone = 'info';
+        box.textContent =
+          'Your payment went through. It can take a minute for the confirmation to reach us — refresh your account page shortly, and contact us if it still looks wrong.';
+        return;
+      }
+      setTimeout(poll, 2000);
+    };
+
+    poll();
+  });
+</script>
+
+<style>
+  .next {
+    margin-top: var(--s-6);
+  }
+  .next h2 { font-size: var(--t-xl); margin-bottom: var(--s-4); }
+  .next ul { padding-left: var(--s-5); display: grid; gap: var(--s-3); }
+  .next__note { margin-top: var(--s-5); font-size: var(--t-sm); color: var(--text-muted); }
+</style>
