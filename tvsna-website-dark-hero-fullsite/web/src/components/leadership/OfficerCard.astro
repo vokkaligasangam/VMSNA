@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { initialsFor, displayName, whereLine } from '../../lib/officers';
 
 interface Props {
   officer: CollectionEntry<'officers'>;
@@ -10,19 +11,14 @@ const { officer, featured = false } = Astro.props;
 const d = officer.data;
 
 /*
-  Monogram rather than a photo. Volunteer headshots vary enormously in quality
-  and framing, so the layout is built to look deliberate with no photo at all
-  and to upgrade gracefully once real portraits arrive — at which point the
-  same tile takes a duotone-treated <Picture>.
+  Monogram rather than a photo. Volunteer headshots vary enormously in
+  quality and framing, so the layout is built to look deliberate with no
+  photo at all and to upgrade gracefully once real portraits arrive — at
+  which point the same tile takes a duotone-treated <Picture>.
 */
-const initials = d.name
-  .replace(/\[|\]/g, '')
-  .split(/\s+/)
-  .filter((w) => /^[A-Za-z]/.test(w))
-  .slice(0, 2)
-  .map((w) => w[0].toUpperCase())
-  .join('') || 'VM';
-
+const initials = initialsFor(d.name);
+const where = whereLine(d);
+const hasProfile = Boolean(d.bioShort);
 const tints = ['tint-a', 'tint-b', 'tint-c', 'tint-d'];
 const tint = tints[d.order % tints.length];
 ---
@@ -31,13 +27,12 @@ const tint = tints[d.order % tints.length];
   <div class={`oc__mono ${tint}`} aria-hidden="true">{initials}</div>
   <p class="oc__role">{d.role}</p>
   <h3 class="oc__name">
-    <a href={`/leadership/${officer.id}/`}>{d.name}</a>
+    {hasProfile ? <a href={`/leadership/${officer.id}/`}>{displayName(d)}</a> : displayName(d)}
   </h3>
-  <p class="oc__where">
-    {d.city}, {d.state} &middot; {d.nativePlace.split(',')[0]}
-  </p>
-  <p class="oc__bio">{d.bioShort}</p>
-  {d.placeholder && <p class="oc__flag">Sample entry — not a real person</p>}
+  {d.nameTamil && <p class="oc__tamil" lang="ta">{d.nameTamil}</p>}
+  {where && <p class="oc__where">{where}</p>}
+  {d.profession && <p class="oc__profession">{d.profession}</p>}
+  {d.bioShort && <p class="oc__bio">{d.bioShort}</p>}
 </article>
 
 <style>
@@ -47,6 +42,7 @@ const tint = tints[d.order % tints.length];
     border-radius: var(--radius-lg);
     padding: var(--s-5);
     text-align: center;
+    height: 100%;
   }
 
   .oc--featured {
@@ -93,7 +89,13 @@ const tint = tints[d.order % tints.length];
     text-decoration: underline;
   }
 
-  .oc__where {
+  .oc__tamil {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .oc__where,
+  .oc__profession {
     font-size: var(--t-xs);
     color: var(--text-muted);
   }
@@ -102,13 +104,5 @@ const tint = tints[d.order % tints.length];
     margin-top: var(--s-3);
     font-size: var(--t-sm);
     text-align: left;
-  }
-
-  .oc__flag {
-    margin-top: var(--s-4);
-    padding-top: var(--s-3);
-    border-top: 1px dashed var(--line-strong);
-    font-size: var(--t-xs);
-    color: var(--text-muted);
   }
 </style>

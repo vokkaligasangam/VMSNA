@@ -1,23 +1,27 @@
 Copy this into a new file named after the person, e.g. jane-doe.md
+Only the first four fields are required — leave out anything you do not have.
 
 ---
-term: "2025-2027"
 tier: executive        # executive | office-bearer | committee-chair | chapter-lead | advisor
 role: "President"
 order: 1               # position within the tier
-name: "Full Name"
-nameTamil: ""          # optional
+name: "Full Name"      # without any honorific
+
+# Everything below is optional.
+honorific: "Dr"        # shown before the name, kept out of the monogram
+nameTamil: ""          # their name in Tamil
+term: "2025-2027"
 city: "Dallas"
 state: "TX"
 country: US            # US | CA | IN
 nativePlace: "Village, District"
-profession: "What you do"
+profession: "What they do"
 contactRole: president@vmsna.org   # a routed alias, never a personal address
-linkedin: ""           # optional, full URL
+linkedin: ""           # full URL
 committees: []
 focus: ["Up to three focus areas"]
 bioShort: "Up to 280 characters. Shown on the leadership grid."
-quote: ""              # optional, up to 200 characters
+quote: ""              # up to 200 characters, shown as a pull quote
 ---
 
 The long biography goes here. Markdown works.

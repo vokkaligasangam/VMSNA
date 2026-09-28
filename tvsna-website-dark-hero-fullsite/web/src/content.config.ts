@@ -39,31 +39,42 @@ const chapters = defineCollection({
   }),
 });
 
+/**
+ * Office bearers.
+ *
+ * Only name, role, tier and order are required. Everything else is optional
+ * and the layout is built to look deliberate without it, because the roster
+ * arrives as names and roles first and the rest follows person by person.
+ * Nothing here should ever be filled in with a plausible guess: these are
+ * real people, and an invented home town or profession on a public page is
+ * worse than a blank one.
+ */
 const officers = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/officers' }),
   schema: z.object({
-    term: z.string().regex(/^\d{4}-\d{4}$/),
     tier: z.enum(['executive', 'office-bearer', 'committee-chair', 'chapter-lead', 'advisor']),
     role: z.string(),
     order: z.number().int(),
     name: z.string(),
+    /** Honorific shown before the name: Dr, Prof. Kept separate so it does not
+        end up in the monogram or the sort order. */
+    honorific: z.string().optional(),
     nameTamil: z.string().optional(),
-    city: z.string(),
-    state: z.string(),
-    country: z.enum(['US', 'CA', 'IN']),
-    nativePlace: z.string(),
-    profession: z.string(),
+
+    term: z.string().regex(/^\d{4}-\d{4}$/).optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.enum(['US', 'CA', 'IN']).optional(),
+    nativePlace: z.string().optional(),
+    profession: z.string().optional(),
     /** Routed alias such as president@vmsna.org — never a personal address. */
-    contactRole: z.string().optional(),
+    contactRole: z.string().email().optional(),
     linkedin: z.string().url().optional(),
     committees: z.array(z.string()).default([]),
     focus: z.array(z.string()).max(3).default([]),
-    bioShort: z.string().max(280),
+    bioShort: z.string().max(280).optional(),
     quote: z.string().max(200).optional(),
     current: z.boolean().default(true),
-    /** Sample content shipped so the layout can be reviewed before real
-        profiles arrive. Rendered with a visible notice; must be removed. */
-    placeholder: z.boolean().default(false),
   }),
 });
 
