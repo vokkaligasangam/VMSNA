@@ -1,0 +1,239 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout
+  title="Diagnostics"
+  lead="Look up one member and see their account, application, directory entry and claims together. This replaces the one-off debug pages that used to be served publicly with a member's name and email baked into them."
+>
+  <form id="lookup" class="lookup" novalidate>
+    <div class="field">
+      <label for="email">Member email address</label>
+      <input id="email" type="email" required autocomplete="off" placeholder="member@example.com" />
+    </div>
+    <button class="btn btn--primary btn--sm" type="submit">Look up</button>
+  </form>
+
+  <p class="status" data-diag-status hidden></p>
+  <div id="result"></div>
+
+  <section class="panel maintenance">
+    <h2>Directory maintenance</h2>
+    <p class="panel__note">
+      The member directory is a server-written projection. If it is ever out of
+      step — a failed deploy, a trigger outage — this reconciles it from the
+      applications. Dry run first and read the counts.
+    </p>
+    <div class="maintenance__actions">
+      <button class="btn btn--ghost btn--sm" type="button" data-rebuild="dry">Dry run</button>
+      <button class="btn btn--danger btn--sm" type="button" data-rebuild="write">Rebuild for real</button>
+    </div>
+    <p class="status" data-rebuild-status hidden></p>
+    <pre id="rebuild-out" hidden></pre>
+  </section>
+</AdminLayout>
+
+<script>
+  import { diagnoseMember, requeueAdminNotification, rebuildDirectory, readableError } from '../../lib/adminApi';
+
+  const result = document.getElementById('result')!;
+
+  function say(selector: string, tone: 'success' | 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>(selector);
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  function section(title: string) {
+    const s = document.createElement('section');
+    s.className = 'panel';
+    const h = document.createElement('h2');
+    h.textContent = title;
+    s.append(h);
+    return s;
+  }
+
+  function facts(obj: Record<string, unknown>) {
+    const dl = document.createElement('dl');
+    dl.className = 'facts';
+    for (const [k, v] of Object.entries(obj)) {
+      const wrap = document.createElement('div');
+      const dt = document.createElement('dt');
+      dt.textContent = k;
+      const dd = document.createElement('dd');
+      dd.textContent = v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+      wrap.append(dt, dd);
+      dl.append(wrap);
+    }
+    return dl;
+  }
+
+  document.getElementById('lookup')!.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+    if (!email) return;
+    say('[data-diag-status]', 'info', 'Looking up…');
+    result.replaceChildren();
+
+    try {
+      const d = await diagnoseMember(email);
+      say('[data-diag-status]', 'success', `Results for ${email}`);
+
+      const findings = section('What this means');
+      const ul = document.createElement('ul');
+      ul.className = 'findings';
+      for (const f of d.findings ?? []) {
+        const li = document.createElement('li');
+        li.textContent = f;
+        ul.append(li);
+      }
+      findings.append(ul);
+      result.append(findings);
+
+      const auth = section('Authentication');
+      auth.append(d.auth ? facts(d.auth) : facts({ account: 'none' }));
+      result.append(auth);
+
+      const apps = section(`Applications (${d.applications?.length ?? 0})`);
+      for (const a of d.applications ?? []) {
+        apps.append(facts(a));
+        if (a.adminNotified === 'FIELD MISSING' || a.adminNotified === false) {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn--ghost btn--sm';
+          btn.textContent = 'Queue an admin notification';
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            try {
+              const r = await requeueAdminNotification(a.docId);
+              say('[data-diag-status]', 'success', r.message);
+            } catch (error) {
+              say('[data-diag-status]', 'error', readableError(error));
+              btn.disabled = false;
+            }
+          });
+          apps.append(btn);
+        }
+      }
+      result.append(apps);
+
+      const dir = section('Directory and access');
+      dir.append(
+        facts({
+          directoryEntry: d.directoryEntry ? 'present' : 'absent',
+          fieldsPublished: d.directoryEntry ? Object.keys(d.directoryEntry).join(', ') : '—',
+          memberIndexAccess: (d.memberIndex as any)?.access ?? '—',
+          role: d.role ? JSON.stringify(d.role) : 'none',
+        }),
+      );
+      result.append(dir);
+    } catch (error) {
+      say('[data-diag-status]', 'error', readableError(error));
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-rebuild]').forEach((btn) =>
+    btn.addEventListener('click', async () => {
+      const dry = btn.dataset.rebuild === 'dry';
+      if (!dry && !confirm('Rebuild the directory for real?\n\nThis rewrites every directory entry and removes any whose application no longer exists. Run a dry run first.')) return;
+      btn.disabled = true;
+      say('[data-rebuild-status]', 'info', dry ? 'Running dry run…' : 'Rebuilding…');
+      try {
+        const report = await rebuildDirectory(dry);
+        const out = document.getElementById('rebuild-out')!;
+        out.hidden = false;
+        out.textContent = JSON.stringify(report, null, 2);
+        say('[data-rebuild-status]', 'success', dry ? 'Dry run complete — nothing was written.' : 'Rebuild complete.');
+      } catch (error) {
+        say('[data-rebuild-status]', 'error', readableError(error));
+      } finally {
+        btn.disabled = false;
+      }
+    }),
+  );
+</script>
+
+<style>
+  .lookup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--s-3);
+    max-width: 34rem;
+    margin-bottom: var(--s-5);
+  }
+
+  .lookup .field {
+    flex: 1 1 18rem;
+    margin-bottom: 0;
+  }
+
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    margin-bottom: var(--s-4);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .panel__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    max-width: 60ch;
+    margin-bottom: var(--s-4);
+  }
+
+  .maintenance {
+    margin-top: var(--s-7);
+  }
+
+  .maintenance__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-bottom: var(--s-3);
+  }
+
+  pre {
+    background: var(--surface-sunk);
+    border-radius: var(--radius-sm);
+    padding: var(--s-4);
+    overflow-x: auto;
+    font-size: var(--t-xs);
+  }
+
+  :global(.facts) {
+    display: grid;
+    gap: var(--s-2) var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+    padding-block: var(--s-3);
+    border-top: 1px solid var(--line);
+  }
+
+  :global(.facts dt) {
+    font-size: var(--t-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  :global(.facts dd) {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+    overflow-wrap: anywhere;
+  }
+
+  :global(.findings) {
+    margin: 0;
+    padding-left: var(--s-5);
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--t-sm);
+  }
+</style>

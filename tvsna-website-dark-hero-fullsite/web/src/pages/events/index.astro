@@ -1,0 +1,202 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '../../layouts/PageLayout.astro';
+
+/*
+  Events sort themselves. Anything whose end date has passed moves to the
+  archive automatically, so the page cannot drift into advertising a date that
+  has already gone by — which is what happened to the previous site.
+*/
+const now = new Date();
+const published = (await getCollection('events')).filter((e) => !e.data.draft);
+
+const upcoming = published
+  .filter((e) => (e.data.end ?? e.data.start) >= now)
+  .sort((a, b) => a.data.start.getTime() - b.data.start.getTime());
+
+const past = published
+  .filter((e) => (e.data.end ?? e.data.start) < now)
+  .sort((a, b) => b.data.start.getTime() - a.data.start.getTime());
+
+// Frontmatter dates are calendar dates parsed as UTC midnight; format them in
+// UTC or a build machine west of Greenwich shows the day before.
+const range = (e: (typeof published)[number]) => {
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+  if (!e.data.end) return e.data.start.toLocaleDateString('en-US', opts);
+  const sameMonth =
+    e.data.start.getUTCMonth() === e.data.end.getUTCMonth() &&
+    e.data.start.getUTCFullYear() === e.data.end.getUTCFullYear();
+  return sameMonth
+    ? `${e.data.start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}–${e.data.end.getUTCDate()}, ${e.data.end.getUTCFullYear()}`
+    : `${e.data.start.toLocaleDateString('en-US', opts)} – ${e.data.end.toLocaleDateString('en-US', opts)}`;
+};
+---
+
+<PageLayout
+  title="Events"
+  kicker="Gatherings"
+  lead="Chapter evenings, youth meets, service days and our national gatherings."
+>
+  <section class="section">
+    <div class="container">
+      <h2>Upcoming</h2>
+      {
+        upcoming.length > 0 ? (
+          <ul class="list">
+            {upcoming.map((e) => (
+              <li class="row">
+                <div class="row__when">
+                  <span class="row__date">{range(e)}</span>
+                  <span class="row__where">{e.data.location}</span>
+                </div>
+                <div>
+                  <h3><a href={`/events/${e.id}/`}>{e.data.title}</a></h3>
+                  <p class="row__summary">{e.data.summary}</p>
+                  <p class="row__chapter">{e.data.chapter} chapter</p>
+                </div>
+                <div class="row__action">
+                  {e.data.registrationUrl ? (
+                    <a class="btn btn--primary btn--sm" href={e.data.registrationUrl} rel="noopener">Register</a>
+                  ) : (
+                    <a class="btn btn--ghost btn--sm" href={`/events/${e.id}/`}>Details</a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="empty">
+            <p class="empty__h">Nothing on the calendar right now.</p>
+            <p>
+              Chapters plan gatherings through the year and members hear first.
+              <a href="/contact/"> Ask your chapter lead</a> what is coming up, or
+              <a href="/join/"> join VMSNA</a> to get the announcements.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        past.length > 0 && (
+          <section class="archive">
+            <h2>Previously</h2>
+            <ul class="list">
+              {past.map((e) => (
+                <li class="row row--past">
+                  <div class="row__when">
+                    <span class="row__date">{range(e)}</span>
+                    <span class="row__where">{e.data.location}</span>
+                  </div>
+                  <div>
+                    <h3><a href={`/events/${e.id}/`}>{e.data.title}</a></h3>
+                    <p class="row__summary">{e.data.summary}</p>
+                  </div>
+                  <div class="row__action">
+                    <a class="btn btn--ghost btn--sm" href={`/events/${e.id}/`}>
+                      {e.data.recap ? 'Recap' : 'Details'}
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-5) 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .row {
+    display: grid;
+    gap: var(--s-3);
+    padding-block: var(--s-5);
+    border-bottom: 1px solid var(--line);
+    align-items: start;
+  }
+
+  @media (min-width: 48rem) {
+    .row {
+      grid-template-columns: 14rem 1fr auto;
+      gap: var(--s-5);
+      align-items: center;
+    }
+  }
+
+  .row--past {
+    color: var(--text-muted);
+  }
+
+  .row__when {
+    display: grid;
+    gap: 2px;
+  }
+
+  .row__date {
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+  }
+
+  .row--past .row__date {
+    color: var(--text-muted);
+  }
+
+  .row__where {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .row h3 {
+    font-size: var(--t-lg);
+  }
+
+  .row h3 a {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .row h3 a:hover {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  .row__summary {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+  }
+
+  .row__chapter {
+    margin-top: var(--s-2);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .empty {
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 54ch;
+    margin-top: var(--s-5);
+  }
+
+  .empty__h {
+    font-family: var(--font-display);
+    font-size: var(--t-lg);
+    color: var(--text);
+    margin-bottom: var(--s-2);
+  }
+
+  .archive {
+    margin-top: var(--s-8);
+  }
+</style>

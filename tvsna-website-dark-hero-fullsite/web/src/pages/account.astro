@@ -1,0 +1,423 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const editable = [
+  { id: 'name', label: 'Full name', field: 'name', required: true },
+  { id: 'phone', label: 'Phone', field: 'phone', type: 'tel' },
+  { id: 'nativePlaceSelf', label: 'Native place', field: 'nativePlaceSelf' },
+  { id: 'profession', label: 'Profession and offerings', field: 'profession' },
+  { id: 'profileUrl', label: 'Links', field: 'profileUrl' },
+  { id: 'spouseName', label: "Spouse's name", field: 'spouseName' },
+  { id: 'spouseEmail', label: "Spouse's email", field: 'spouseEmail', type: 'email' },
+  { id: 'spousePhone', label: "Spouse's phone", field: 'spousePhone', type: 'tel' },
+  { id: 'nativePlaceSpouse', label: "Spouse's native place", field: 'nativePlaceSpouse' },
+  { id: 'spouseProfession', label: "Spouse's profession", field: 'spouseProfession' },
+  { id: 'spouseProfileUrl', label: "Spouse's links", field: 'spouseProfileUrl' },
+  { id: 'street', label: 'Street address', field: 'street', required: true },
+  { id: 'city', label: 'City', field: 'city', required: true },
+  { id: 'state', label: 'State or province', field: 'state', required: true },
+  { id: 'zip', label: 'Postal code', field: 'zip', required: true },
+];
+---
+
+<PageLayout title="Your account" kicker="Members" lead="Your profile, how much of it other members can see, and your membership." noindex={true}>
+  <section class="section">
+    <div class="container">
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span>
+          <span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="notice-card">
+          <h2>Please sign in</h2>
+          <p>You need to be signed in to see your account.</p>
+          <p class="notice-card__cta">
+            <a class="btn btn--primary" href="/login/?next=/account/">Sign in</a>
+            <a class="btn btn--ghost" href="/join/">Apply for membership</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="rejected">
+        <div class="notice-card">
+          <h2>This application was not approved</h2>
+          <p>Please <a href="/contact/">get in touch</a> if you would like to discuss it.</p>
+          <p class="notice-card__cta">
+            <button class="btn btn--ghost" type="button" data-signout>Sign out</button>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="member pending unpaid">
+        <div data-gate="pending">
+          <div class="notice-card notice-card--flush">
+            <h2>Your application is under review</h2>
+            <p id="pending-note">
+              A committee member is looking at it. You can still keep your
+              details up to date below.
+            </p>
+          </div>
+        </div>
+
+        <div class="acct">
+          <div>
+            <div class="panel">
+              <div class="panel__head">
+                <h2>Your profile</h2>
+                <button class="btn btn--ghost btn--sm" type="button" id="edit-toggle">Edit</button>
+              </div>
+
+              <dl class="facts" id="profile-view">
+                <div><dt>Name</dt><dd data-show="name">—</dd></div>
+                <div><dt>Email</dt><dd data-show="email">—</dd></div>
+                <div><dt>Phone</dt><dd data-show="phone">—</dd></div>
+                <div><dt>Native place</dt><dd data-show="nativePlaceSelf">—</dd></div>
+                <div><dt>Profession</dt><dd data-show="profession">—</dd></div>
+                <div><dt>Address</dt><dd data-show="address">—</dd></div>
+                <div><dt>Spouse</dt><dd data-show="spouseName">—</dd></div>
+                <div><dt>Children</dt><dd data-show="childrenDetails">—</dd></div>
+              </dl>
+
+              <form id="profile-form" hidden novalidate>
+                <p class="status" data-form-status hidden></p>
+                <div class="field">
+                  <label for="f-email">Email</label>
+                  <input id="f-email" type="email" readonly />
+                  <span class="field__hint">Your email is the identity we verified, so it cannot be changed here. <a href="/contact/">Contact us</a> if it needs to change.</span>
+                </div>
+                {editable.map((f) => (
+                  <div class="field">
+                    <label for={`f-${f.id}`}>{f.label}</label>
+                    <input id={`f-${f.id}`} name={f.field} type={f.type ?? 'text'} required={f.required} />
+                  </div>
+                ))}
+                <div class="field">
+                  <label for="f-childrenDetails">Children</label>
+                  <textarea id="f-childrenDetails" name="childrenDetails" rows="3"></textarea>
+                  <span class="field__hint">Never shown in the directory.</span>
+                </div>
+                <div class="actions">
+                  <button class="btn btn--primary" type="submit">Save changes</button>
+                  <button class="btn btn--ghost" type="button" id="cancel-edit">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <aside class="side">
+            <div class="panel">
+              <h2>Directory privacy</h2>
+              <p class="side__note">
+                What other approved members see. Your street address, postal code
+                and children's details are never shown at either setting.
+              </p>
+              <form id="privacy-form">
+                <label class="choice">
+                  <input type="radio" name="privacy" value="full" />
+                  <span><strong>Full profile</strong><br /><span class="choice__note">Name, location, native place, profession and contact.</span></span>
+                </label>
+                <label class="choice">
+                  <input type="radio" name="privacy" value="limited" />
+                  <span><strong>Limited profile</strong><br /><span class="choice__note">Name and state only.</span></span>
+                </label>
+                <p class="status" data-privacy-status hidden></p>
+                <button class="btn btn--ghost btn--sm" type="submit">Update privacy</button>
+              </form>
+            </div>
+
+            <div class="panel">
+              <h2>Membership</h2>
+              <p class="side__note">Application: <strong data-show="status">—</strong></p>
+              <p class="side__note">Membership: <strong data-show="membership">—</strong></p>
+              <p class="side__note"><a href="/account/billing/">Billing and receipts</a></p>
+              <p class="side__note">
+                <button class="btn btn--ghost btn--sm" type="button" data-signout>Sign out</button>
+              </p>
+            </div>
+
+            <div class="panel panel--danger">
+              <h2>Delete your account</h2>
+              <p class="side__note">
+                This permanently removes your membership record, your directory
+                entry and your login. It cannot be undone.
+              </p>
+              <p class="status" data-delete-status hidden></p>
+              <button class="btn btn--danger btn--sm" type="button" id="delete-account">
+                Delete my account
+              </button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth, signOutNow, getAuthState } from '../lib/authStore';
+  import { membershipLabel } from '../lib/access';
+
+  startAuth();
+
+  const view = document.getElementById('profile-view');
+  const form = document.getElementById('profile-form') as HTMLFormElement | null;
+  const toggle = document.getElementById('edit-toggle');
+  let docId: string | null = null;
+  let data: Record<string, any> = {};
+
+  const show = (key: string, value: string) =>
+    document.querySelectorAll<HTMLElement>(`[data-show="${key}"]`).forEach((el) => {
+      el.textContent = value || '—';
+    });
+
+  function paint() {
+    show('name', data.name);
+    show('email', data.email);
+    show('phone', data.phone);
+    show('nativePlaceSelf', data.nativePlaceSelf);
+    show('profession', data.profession);
+    show('address', [data.street, data.city, data.state, data.zip].filter(Boolean).join(', '));
+    show('spouseName', data.spouseName);
+    show('childrenDetails', data.childrenDetails);
+    show('status', data.status === 'approved' ? 'Approved' : data.status === 'rejected' ? 'Not approved' : 'Pending review');
+    show('membership', membershipLabel(data));
+
+    if (form) {
+      (document.getElementById('f-email') as HTMLInputElement).value = data.email ?? '';
+      form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[name]').forEach((el) => {
+        el.value = data[el.name] ?? '';
+      });
+    }
+    document
+      .querySelectorAll<HTMLInputElement>('#privacy-form input[name="privacy"]')
+      .forEach((el) => {
+        el.checked = el.value === (data.privacyLevel === 'limited' ? 'limited' : 'full');
+      });
+  }
+
+  function say(selector: string, tone: 'success' | 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>(selector);
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  toggle?.addEventListener('click', () => {
+    const editing = form && !form.hidden;
+    if (form) form.hidden = !!editing;
+    if (view) view.hidden = !editing;
+    if (toggle) toggle.textContent = editing ? 'Edit' : 'Close';
+  });
+
+  document.getElementById('cancel-edit')?.addEventListener('click', () => {
+    if (form) form.hidden = true;
+    if (view) view.hidden = false;
+    if (toggle) toggle.textContent = 'Edit';
+    paint();
+  });
+
+  async function updateDoc(patch: Record<string, unknown>) {
+    if (!docId) throw new Error('No membership record loaded');
+    const [{ db }, fs] = await Promise.all([
+      import('../lib/firebase'),
+      import('firebase/firestore'),
+    ]);
+    await fs.updateDoc(fs.doc(db(), 'membershipApplications', docId), {
+      ...patch,
+      updatedAt: fs.serverTimestamp(),
+    });
+    Object.assign(data, patch);
+  }
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const patch: Record<string, string> = {};
+    form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[name]').forEach((el) => {
+      patch[el.name] = el.value.trim();
+    });
+    try {
+      await updateDoc(patch);
+      paint();
+      say('[data-form-status]', 'success', 'Your profile has been updated.');
+    } catch (error) {
+      console.error(error);
+      say('[data-form-status]', 'error', 'That did not save. Please try again.');
+    }
+  });
+
+  document.getElementById('privacy-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const chosen = document.querySelector<HTMLInputElement>(
+      '#privacy-form input[name="privacy"]:checked',
+    );
+    if (!chosen) return;
+    try {
+      await updateDoc({ privacyLevel: chosen.value });
+      say(
+        '[data-privacy-status]',
+        'success',
+        chosen.value === 'limited'
+          ? 'Updated. Other members now see only your name and state.'
+          : 'Updated. Your full profile is visible to other members.',
+      );
+    } catch (error) {
+      console.error(error);
+      say('[data-privacy-status]', 'error', 'That did not save. Please try again.');
+    }
+  });
+
+  document.querySelectorAll('[data-signout]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      await signOutNow();
+      location.assign('/');
+    }),
+  );
+
+  document.getElementById('delete-account')?.addEventListener('click', async () => {
+    const name = getAuthState().user?.email ?? 'your account';
+    if (!confirm(`Permanently delete ${name}?\n\nThis removes your membership record, your directory entry and your login. It cannot be undone.`)) return;
+    if (prompt('Type DELETE to confirm.') !== 'DELETE') {
+      say('[data-delete-status]', 'info', 'Deletion cancelled.');
+      return;
+    }
+    say('[data-delete-status]', 'info', 'Deleting your account…');
+    try {
+      /* Server-side so the Auth record and the Firestore documents are removed
+         by one identity; doing it from the browser left orphaned logins. */
+      const [{ functions }, { httpsCallable }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/functions'),
+      ]);
+      await httpsCallable(functions(), 'deleteMyAccount')({});
+      await signOutNow();
+      location.assign('/?deleted=1');
+    } catch (error) {
+      console.error(error);
+      say('[data-delete-status]', 'error', 'We could not delete the account. Please email info@vmsna.org.');
+    }
+  });
+
+  onAuth((s) => {
+    if (!s.ready) return;
+    if (s.member) {
+      docId = s.member.docId;
+      data = s.member.data;
+      paint();
+    }
+    const note = document.getElementById('pending-note');
+    if (note && s.user && !s.verified) {
+      note.textContent =
+        'Your email address is not verified yet, so your application has not reached the committee. Check your inbox for the verification link.';
+    }
+  });
+</script>
+
+<style>
+  .notice-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 56ch;
+  }
+
+  .notice-card--flush {
+    max-width: none;
+    margin-bottom: var(--s-5);
+    background: var(--surface-sunk);
+  }
+
+  .notice-card h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .notice-card__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .acct {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 60rem) {
+    .acct {
+      grid-template-columns: 1.6fr 1fr;
+      gap: var(--s-6);
+    }
+  }
+
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .panel + .panel {
+    margin-top: var(--s-4);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+  }
+
+  .panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    margin-bottom: var(--s-4);
+  }
+
+  .panel--danger {
+    border-color: #e0c4ba;
+    background: #fdf6f3;
+  }
+
+  .facts {
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  }
+
+  .facts dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+  }
+
+  .side__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-top: var(--s-2);
+  }
+
+  .choice__note {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+</style>

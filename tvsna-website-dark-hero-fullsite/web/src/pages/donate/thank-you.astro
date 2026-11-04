@@ -1,0 +1,44 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Thank you"
+  kicker="Your donation"
+  lead="Thank you for supporting VMSNA."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container container-narrow">
+      <div class="panel">
+        <h2>Your donation has gone through</h2>
+        <p>
+          A receipt is on its way to your email. VMSNA is a registered 501(c)(3)
+          non-profit, so donations from US taxpayers are tax-deductible to the
+          extent allowed by law — keep the receipt for your records.
+        </p>
+        <p class="note">
+          Your gift funds scholarships, the chapters' youth and language
+          programmes, and assistance for member families who need it.
+        </p>
+        <p class="cta">
+          <a class="btn btn--ghost" href="/">Back to the homepage</a>
+          <a class="btn btn--ghost" href="/events/">See what is coming up</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+  }
+  .panel h2 { font-size: var(--t-xl); margin-bottom: var(--s-3); }
+  .panel p + p { margin-top: var(--s-3); }
+  .note { font-size: var(--t-sm); color: var(--text-muted); }
+  .cta { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-5); }
+</style>

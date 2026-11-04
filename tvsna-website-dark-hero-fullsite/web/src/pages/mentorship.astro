@@ -1,0 +1,449 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Mentorship"
+  kicker="For members"
+  lead="Members who will give their time, and members looking for someone who has already walked the road they are on."
+>
+  <section class="section">
+    <div class="container">
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span><span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="pitch">
+          <h2>Mentorship is for members</h2>
+          <p>
+            Students heading into a field where a member already works.
+            Families arriving in a new city. Someone changing career at forty.
+            The point of a community this size is that somebody has done it
+            before.
+          </p>
+          <p class="pitch__cta">
+            <a class="btn btn--primary" href="/join/">Apply for membership</a>
+            <a class="btn btn--ghost" href="/login/">I already have an account</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="pending">
+        <div class="pitch">
+          <h2>Once your application is approved</h2>
+          <p>The mentorship board opens as soon as your application has been reviewed.</p>
+        </div>
+      </div>
+
+      <div data-gate="unpaid">
+        <div class="pitch">
+          <h2>Activate your membership</h2>
+          <p>Your application is approved — one step left.</p>
+          <p class="pitch__cta">
+            <a class="btn btn--primary" href="/membership/activate/">Activate membership</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="member">
+        <div class="board">
+          <div>
+            <div class="tabs" role="group" aria-label="Filter">
+              <button class="tab tab--on" type="button" data-filter="all">Everyone</button>
+              <button class="tab" type="button" data-filter="offer">Offering to mentor</button>
+              <button class="tab" type="button" data-filter="request">Looking for a mentor</button>
+            </div>
+
+            <p class="status" data-board-status hidden></p>
+            <ul class="entries" id="entries"></ul>
+          </div>
+
+          <aside class="panel">
+            <h2 id="form-heading">Add yourself</h2>
+            <form id="mentor-form" novalidate>
+              <fieldset class="kind">
+                <legend class="visually-hidden">What are you offering</legend>
+                <label class="seg"><input type="radio" name="kind" value="offer" checked /><span>I can mentor</span></label>
+                <label class="seg"><input type="radio" name="kind" value="request" /><span>I need a mentor</span></label>
+              </fieldset>
+
+              <div class="field">
+                <label for="field">Field or topic</label>
+                <input id="field" name="field" type="text" required maxlength="120" placeholder="Medicine · software · applying to college" />
+              </div>
+
+              <div class="field">
+                <label for="detail">A little more <span class="field__optional">(optional)</span></label>
+                <textarea id="detail" name="detail" rows="4" maxlength="1000" placeholder="What you can help with, or what you are looking for."></textarea>
+              </div>
+
+              <div class="field">
+                <label for="contact">Contact address <span class="field__optional">(optional)</span></label>
+                <input id="contact" name="contact" type="email" maxlength="200" />
+                <span class="field__hint">
+                  Shown to other members on this board only. Leave it blank and
+                  people will find you through the directory instead.
+                </span>
+              </div>
+
+              <p class="status" data-form-status hidden></p>
+              <button class="btn btn--primary btn--sm" type="submit">Post to the board</button>
+            </form>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth, getAuthState } from '../lib/authStore';
+
+  startAuth();
+
+  const list = document.getElementById('entries');
+  let filter: 'all' | 'offer' | 'request' = 'all';
+  let entries: { id: string; data: Record<string, any> }[] = [];
+
+  function say(selector: string, tone: 'success' | 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>(selector);
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  /* Built with createElement and textContent — member-written text must never
+     be interpreted as markup. */
+  function card(id: string, d: Record<string, any>, mine: boolean) {
+    const li = document.createElement('li');
+    li.className = `entry entry--${d.kind}`;
+
+    const tag = document.createElement('p');
+    tag.className = 'entry__tag';
+    tag.textContent = d.kind === 'offer' ? 'Offering to mentor' : 'Looking for a mentor';
+    li.append(tag);
+
+    const h = document.createElement('h3');
+    h.textContent = d.field ?? '—';
+    li.append(h);
+
+    const who = document.createElement('p');
+    who.className = 'entry__who';
+    who.textContent = d.name ?? 'A member';
+    li.append(who);
+
+    if (d.detail) {
+      const p = document.createElement('p');
+      p.className = 'entry__detail';
+      p.textContent = d.detail;
+      li.append(p);
+    }
+
+    const foot = document.createElement('div');
+    foot.className = 'entry__foot';
+    if (d.contact) {
+      const a = document.createElement('a');
+      a.href = `mailto:${d.contact}`;
+      a.textContent = 'Get in touch';
+      a.className = 'btn btn--ghost btn--sm';
+      foot.append(a);
+    } else {
+      const note = document.createElement('span');
+      note.className = 'entry__note';
+      note.textContent = 'Find them in the directory';
+      foot.append(note);
+    }
+
+    if (mine) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn btn--danger btn--sm';
+      del.textContent = 'Remove';
+      del.addEventListener('click', () => remove(id));
+      foot.append(del);
+    }
+    li.append(foot);
+    return li;
+  }
+
+  function render() {
+    if (!list) return;
+    const uid = getAuthState().user?.uid;
+    const visible = entries.filter((e) => filter === 'all' || e.data.kind === filter);
+    list.replaceChildren();
+
+    if (visible.length === 0) {
+      const p = document.createElement('li');
+      p.className = 'entries__empty';
+      p.textContent =
+        filter === 'all'
+          ? 'Nobody has posted yet. Be the first — it only works if people put their hand up.'
+          : 'Nothing here yet under this filter.';
+      list.append(p);
+      return;
+    }
+    for (const e of visible) list.append(card(e.id, e.data, e.data.uid === uid));
+  }
+
+  async function load() {
+    say('[data-board-status]', 'info', 'Loading the board…');
+    try {
+      const [{ db }, fs] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const snap = await fs.getDocs(
+        fs.query(fs.collection(db(), 'mentorship'), fs.orderBy('createdAt', 'desc')),
+      );
+      entries = snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+      document.querySelector<HTMLElement>('[data-board-status]')!.hidden = true;
+      render();
+    } catch (error) {
+      console.error(error);
+      say('[data-board-status]', 'error', 'The board could not be loaded. Please refresh.');
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm('Remove your post from the mentorship board?')) return;
+    try {
+      const [{ db }, fs] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      await fs.deleteDoc(fs.doc(db(), 'mentorship', id));
+      entries = entries.filter((e) => e.id !== id);
+      render();
+    } catch (error) {
+      console.error(error);
+      say('[data-board-status]', 'error', 'That could not be removed. Please try again.');
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter as typeof filter;
+      document.querySelectorAll('[data-filter]').forEach((b) => b.classList.toggle('tab--on', b === btn));
+      render();
+    }),
+  );
+
+  document.getElementById('mentor-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    if (!form.reportValidity()) return;
+
+    const state = getAuthState();
+    if (!state.user || !state.member) return;
+
+    const f = new FormData(form);
+    const payload = {
+      uid: state.user.uid,
+      kind: String(f.get('kind')),
+      name: String(state.member.data.name ?? 'A member'),
+      field: String(f.get('field')).trim(),
+      detail: String(f.get('detail') ?? '').trim(),
+      contact: String(f.get('contact') ?? '').trim(),
+    };
+
+    try {
+      const [{ db }, fs] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      const ref = await fs.addDoc(fs.collection(db(), 'mentorship'), {
+        ...payload,
+        createdAt: fs.serverTimestamp(),
+      });
+      entries.unshift({ id: ref.id, data: { ...payload, createdAt: new Date() } });
+      form.reset();
+      render();
+      say('[data-form-status]', 'success', 'Posted. Thank you — this is the part that makes it work.');
+    } catch (error) {
+      console.error(error);
+      say('[data-form-status]', 'error', 'That did not post. Please try again.');
+    }
+  });
+
+  onAuth((s) => {
+    if (s.ready && s.state === 'member') load();
+  });
+</script>
+
+<style>
+  .pitch {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 58ch;
+  }
+
+  .pitch h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .pitch__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+
+  .board {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 58rem) {
+    .board {
+      grid-template-columns: 1.5fr 1fr;
+      gap: var(--s-6);
+    }
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+
+  .tab {
+    min-height: 38px;
+    padding: var(--s-2) var(--s-4);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-body);
+    font-size: var(--t-sm);
+    cursor: pointer;
+  }
+
+  .tab--on {
+    background: var(--soil);
+    border-color: var(--soil);
+    color: var(--text-on-dark);
+  }
+
+  .entries {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-3);
+  }
+
+  .entries :global(.entries__empty) {
+    background: var(--surface-sunk);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    color: var(--text-muted);
+    font-size: var(--t-sm);
+  }
+
+  .entries :global(.entry) {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .entries :global(.entry--offer) {
+    border-left-color: var(--paddy);
+  }
+
+  .entries :global(.entry--request) {
+    border-left-color: var(--terra);
+  }
+
+  .entries :global(.entry__tag) {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .entries :global(.entry h3) {
+    font-size: var(--t-lg);
+    margin-block: var(--s-2) var(--s-1);
+  }
+
+  .entries :global(.entry__who) {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .entries :global(.entry__detail) {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+
+  .entries :global(.entry__foot) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .entries :global(.entry__note) {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-4);
+  }
+
+  .kind {
+    border: 0;
+    padding: 0;
+    margin: 0 0 var(--s-4);
+    display: flex;
+    gap: var(--s-2);
+  }
+
+  .seg input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .seg span {
+    display: inline-block;
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font-size: var(--t-sm);
+    cursor: pointer;
+  }
+
+  .seg input:checked + span {
+    background: var(--soil);
+    border-color: var(--soil);
+    color: var(--text-on-dark);
+  }
+
+  .seg input:focus-visible + span {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+</style>

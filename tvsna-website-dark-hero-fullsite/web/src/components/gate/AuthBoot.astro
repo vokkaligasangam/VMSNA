@@ -1,0 +1,28 @@
+---
+/*
+  Runs before first paint, synchronously, in <head>.
+
+  Deliberately not a module and not deferred: it has to set data-auth on <html>
+  before the stylesheet paints, or a returning member sees the signed-out
+  layout first. Kept to a few hundred bytes and wrapped in try/catch so that
+  blocked storage degrades to the guest layout rather than a blank page.
+*/
+---
+
+<script is:inline>
+  (function () {
+    var el = document.documentElement;
+    try {
+      var raw = localStorage.getItem('vmsna.authHint');
+      var h = raw ? JSON.parse(raw) : null;
+      if (!h || h.v !== 1 || !h.exp || h.exp < Date.now()) {
+        el.dataset.auth = 'guest';
+        return;
+      }
+      el.dataset.auth = h.state || 'guest';
+      if (h.admin) el.dataset.role = 'admin';
+    } catch (e) {
+      el.dataset.auth = 'guest';
+    }
+  })();
+</script>

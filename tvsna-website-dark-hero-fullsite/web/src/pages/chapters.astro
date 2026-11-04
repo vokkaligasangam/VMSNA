@@ -1,0 +1,115 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '../layouts/PageLayout.astro';
+
+const chapters = (await getCollection('chapters')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const flag = { US: 'United States', CA: 'Canada', IN: 'India', Multiple: 'Multiple countries' };
+---
+
+<PageLayout
+  title="Chapters"
+  kicker="Where we are"
+  lead="Seven regions across North America and our home region in India. Chapters run their own gatherings, classes and service days."
+>
+  <section class="section">
+    <div class="container">
+      <ul class="chapters">
+        {
+          chapters.map((c) => (
+            <li class="chapter">
+              <div class="chapter__head">
+                <h2>{c.data.name}</h2>
+                <span class="chapter__country">{flag[c.data.country]}</span>
+              </div>
+              <p class="chapter__blurb">{c.data.blurb}</p>
+              <ul class="regions">
+                {c.data.regions.map((r) => <li>{r}</li>)}
+              </ul>
+              {c.data.contactRole && (
+                <p class="chapter__contact">
+                  <a href={`mailto:${c.data.contactRole}`}>{c.data.contactRole}</a>
+                </p>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="note">
+        Not sure which chapter you belong to? <a href="/contact/">Get in touch</a>
+        and we will point you to the people nearest you.
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .chapters {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+  }
+
+  .chapter {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .chapter__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-2);
+  }
+
+  .chapter h2 {
+    font-size: var(--t-xl);
+  }
+
+  .chapter__country {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .chapter__blurb {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+  }
+
+  .regions {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-4) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+
+  .regions li {
+    font-size: var(--t-xs);
+    background: var(--surface-sunk);
+    border-radius: var(--radius-sm);
+    padding: 3px var(--s-2);
+    color: var(--text-body);
+  }
+
+  .chapter__contact {
+    margin-top: var(--s-4);
+    font-size: var(--t-sm);
+  }
+
+  .note {
+    margin-top: var(--s-6);
+  }
+</style>

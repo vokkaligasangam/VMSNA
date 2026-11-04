@@ -1,0 +1,108 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { initialsFor, displayName, whereLine } from '../../lib/officers';
+
+interface Props {
+  officer: CollectionEntry<'officers'>;
+  featured?: boolean;
+}
+
+const { officer, featured = false } = Astro.props;
+const d = officer.data;
+
+/*
+  Monogram rather than a photo. Volunteer headshots vary enormously in
+  quality and framing, so the layout is built to look deliberate with no
+  photo at all and to upgrade gracefully once real portraits arrive — at
+  which point the same tile takes a duotone-treated <Picture>.
+*/
+const initials = initialsFor(d.name);
+const where = whereLine(d);
+const hasProfile = Boolean(d.bioShort);
+const tints = ['tint-a', 'tint-b', 'tint-c', 'tint-d'];
+const tint = tints[d.order % tints.length];
+---
+
+<article class={`oc ${featured ? 'oc--featured' : ''}`}>
+  <div class={`oc__mono ${tint}`} aria-hidden="true">{initials}</div>
+  <p class="oc__role">{d.role}</p>
+  <h3 class="oc__name">
+    {hasProfile ? <a href={`/leadership/${officer.id}/`}>{displayName(d)}</a> : displayName(d)}
+  </h3>
+  {d.nameTamil && <p class="oc__tamil" lang="ta">{d.nameTamil}</p>}
+  {where && <p class="oc__where">{where}</p>}
+  {d.profession && <p class="oc__profession">{d.profession}</p>}
+  {d.bioShort && <p class="oc__bio">{d.bioShort}</p>}
+</article>
+
+<style>
+  .oc {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    text-align: center;
+    height: 100%;
+  }
+
+  .oc--featured {
+    border-color: var(--line-strong);
+  }
+
+  .oc__mono {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto var(--s-4);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .tint-a { background: #f0dec9; color: #8a3d1c; }
+  .tint-b { background: #dce6d9; color: #2f5238; }
+  .tint-c { background: #f5e6c6; color: #7a5a12; }
+  .tint-d { background: #e3ddd3; color: #4a3f35; }
+
+  .oc__role {
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--terra-dark);
+  }
+
+  .oc__name {
+    font-size: var(--t-lg);
+    margin-block: var(--s-2) var(--s-1);
+  }
+
+  .oc__name a {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .oc__name a:hover {
+    color: var(--terra-dark);
+    text-decoration: underline;
+  }
+
+  .oc__tamil {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .oc__where,
+  .oc__profession {
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .oc__bio {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+    text-align: left;
+  }
+</style>

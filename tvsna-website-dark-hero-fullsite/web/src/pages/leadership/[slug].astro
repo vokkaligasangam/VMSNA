@@ -1,0 +1,239 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { initialsFor, displayName, whereLine } from '../../lib/officers';
+
+export async function getStaticPaths() {
+  // Declared inside: Astro extracts getStaticPaths into its own chunk, so it
+  // cannot see consts from the component's module scope.
+  const TIER_ORDER = ['executive', 'office-bearer', 'committee-chair', 'chapter-lead', 'advisor'];
+
+  // Only people with a short bio get a page; the grid renders the rest as
+  // plain cards. Adding bioShort is what publishes someone's profile.
+  const officers = (await getCollection('officers')).filter((o) => o.data.bioShort);
+  const sorted = officers.sort((a, b) => {
+    const t = TIER_ORDER.indexOf(a.data.tier) - TIER_ORDER.indexOf(b.data.tier);
+    return t !== 0 ? t : a.data.order - b.data.order;
+  });
+  return sorted.map((officer, i) => ({
+    params: { slug: officer.id },
+    props: { officer, prev: sorted[i - 1] ?? null, next: sorted[i + 1] ?? null },
+  }));
+}
+
+const { officer, prev, next } = Astro.props;
+const d = officer.data;
+const { Content } = await render(officer);
+
+const full = displayName(d);
+const initials = initialsFor(d.name);
+const where = whereLine(d);
+
+/* Only the facts that exist. An empty row is worse than no row. */
+const facts: [string, string][] = [];
+if (where) facts.push(['Lives in', where]);
+if (d.nativePlace) facts.push(['Native place', d.nativePlace]);
+if (d.profession) facts.push(['Profession', d.profession]);
+if (d.term) facts.push(['Term', d.term]);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: full,
+  jobTitle: d.role,
+  affiliation: { '@type': 'NGO', name: 'Vokkaliga Mahajana Sangam North America' },
+  ...(d.city ? { address: { '@type': 'PostalAddress', addressLocality: d.city, addressRegion: d.state } } : {}),
+};
+---
+
+<BaseLayout
+  title={`${full} — ${d.role}`}
+  description={d.bioShort ?? `${full} serves as ${d.role} of Vokkaliga Mahajana Sangam North America.`}
+>
+  <article class="section">
+    <div class="container">
+      <p class="back"><a href="/leadership/">&larr; All leadership</a></p>
+
+      <header class="phead">
+        <div class="phead__mono" aria-hidden="true">{initials}</div>
+        <div>
+          <p class="kicker">{d.role}{d.term ? ` · ${d.term}` : ''}</p>
+          <h1>{full}</h1>
+          {d.nameTamil && <p class="phead__tamil" lang="ta">{d.nameTamil}</p>}
+
+          {
+            facts.length > 0 && (
+              <dl class="facts">
+                {facts.map(([term, value]) => (
+                  <div>
+                    <dt>{term}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )
+          }
+
+          {
+            (d.contactRole || d.linkedin) && (
+              <p class="links">
+                {d.contactRole && <a href={`mailto:${d.contactRole}`}>{d.contactRole}</a>}
+                {d.linkedin && <a href={d.linkedin} rel="noopener">LinkedIn</a>}
+              </p>
+            )
+          }
+        </div>
+      </header>
+
+      {d.quote && <blockquote class="pullquote">{d.quote}</blockquote>}
+
+      {d.bioShort && <p class="lead measure summary">{d.bioShort}</p>}
+
+      <div class="prose measure">
+        <Content />
+      </div>
+
+      {
+        d.focus.length > 0 && (
+          <section class="focus">
+            <h2>Working on</h2>
+            <ul>{d.focus.map((f) => <li>{f}</li>)}</ul>
+          </section>
+        )
+      }
+
+      <nav class="pager" aria-label="Other office bearers">
+        {prev ? <a href={`/leadership/${prev.id}/`}>&larr; {displayName(prev.data)}</a> : <span></span>}
+        {next ? <a href={`/leadership/${next.id}/`}>{displayName(next.data)} &rarr;</a> : <span></span>}
+      </nav>
+    </div>
+  </article>
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  .back {
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-5);
+  }
+
+  .phead {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 40rem) {
+    .phead {
+      grid-template-columns: auto 1fr;
+      gap: var(--s-6);
+    }
+  }
+
+  .phead__mono {
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    background: #f0dec9;
+    color: #8a3d1c;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    font-weight: 500;
+  }
+
+  .phead h1 {
+    font-size: var(--t-2xl);
+    margin-block: var(--s-2);
+  }
+
+  .phead__tamil {
+    color: var(--text-muted);
+  }
+
+  .facts {
+    display: grid;
+    gap: var(--s-3) var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+    margin-top: var(--s-5);
+  }
+
+  .facts dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .facts dd {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-4);
+    margin-top: var(--s-4);
+    font-size: var(--t-sm);
+  }
+
+  .pullquote {
+    margin: var(--s-7) 0;
+    padding-left: var(--s-5);
+    border-left: 3px solid var(--gold);
+    font-family: var(--font-display);
+    font-size: var(--t-xl);
+    line-height: var(--leading-snug);
+    color: var(--text);
+    max-width: 34ch;
+  }
+
+  .summary {
+    margin-top: var(--s-6);
+  }
+
+  .prose {
+    margin-top: var(--s-5);
+  }
+
+  .prose :global(p + p) {
+    margin-top: var(--s-4);
+  }
+
+  .focus {
+    margin-top: var(--s-6);
+  }
+
+  .focus h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .focus ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    list-style: none;
+    padding: 0;
+  }
+
+  .focus li {
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: var(--s-2) var(--s-4);
+    font-size: var(--t-sm);
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    margin-top: var(--s-8);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+    font-size: var(--t-sm);
+  }
+</style>

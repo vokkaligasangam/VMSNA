@@ -1,0 +1,104 @@
+---
+/*
+  VMSNA mark: a low sun over two furrowed fields.
+  Secular by design — the retired seal carried a temple gopuram, which is why
+  it is being replaced. Drawn inline so it inherits colour and costs no request.
+*/
+interface Props {
+  size?: number;
+  withWordmark?: boolean;
+  onDark?: boolean;
+  class?: string;
+}
+
+const {
+  size = 40,
+  withWordmark = true,
+  onDark = false,
+  class: className = '',
+} = Astro.props;
+
+const disc = onDark ? '#faf5ec' : '#1f1710';
+const furrowNear = onDark ? '#1f1710' : '#faf5ec';
+---
+
+<span class={`logo ${className}`} data-on-dark={onDark}>
+  <svg
+    class="logo__mark"
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    role="img"
+    aria-label="VMSNA"
+    focusable="false"
+  >
+    <circle cx="24" cy="24" r="23" fill={disc} />
+    <circle cx="24" cy="17" r="5.2" fill="#d9a441" />
+    <path
+      d="M6 33c6-5 12-7.5 18-7.5S36 28 42 33"
+      stroke={furrowNear}
+      stroke-width="2.2"
+      fill="none"
+      stroke-linecap="round"
+    />
+    <path
+      d="M8 39c5.5-4.5 10.8-6.8 16-6.8S34.5 34.5 40 39"
+      stroke="#b4532a"
+      stroke-width="2.2"
+      fill="none"
+      stroke-linecap="round"
+    />
+  </svg>
+
+  {
+    withWordmark && (
+      <span class="logo__words">
+        <span class="logo__name">VMSNA</span>
+        <span class="logo__full">Vokkaliga Mahajana Sangam</span>
+      </span>
+    )
+  }
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .logo__mark {
+    flex: none;
+  }
+
+  .logo__words {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .logo__name {
+    font-family: var(--font-display);
+    font-weight: 560;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+
+  .logo__full {
+    font-size: 0.5625rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* The full name is long; below the header breakpoint it is noise. */
+  @media (max-width: 26rem) {
+    .logo__full {
+      display: none;
+    }
+  }
+</style>

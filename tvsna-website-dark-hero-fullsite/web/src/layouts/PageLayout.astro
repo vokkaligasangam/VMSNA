@@ -1,0 +1,41 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  kicker?: string;
+  lead?: string;
+  description?: string;
+  noindex?: boolean;
+}
+
+const { title, kicker, lead, description, noindex } = Astro.props;
+---
+
+<BaseLayout title={title} description={description ?? lead} noindex={noindex}>
+  <div class="pagehead">
+    <div class="container">
+      {kicker && <p class="kicker">{kicker}</p>}
+      <h1>{title}</h1>
+      {lead && <p class="lead measure pagehead__lead">{lead}</p>}
+    </div>
+  </div>
+  <slot />
+</BaseLayout>
+
+<style>
+  .pagehead {
+    background: var(--surface-sunk);
+    border-bottom: 1px solid var(--line);
+    padding-block: clamp(var(--s-7), 5vw, var(--s-8));
+  }
+
+  .pagehead h1 {
+    margin-top: var(--s-3);
+    max-width: 20ch;
+  }
+
+  .pagehead__lead {
+    margin-top: var(--s-4);
+  }
+</style>

@@ -1,10 +1,41 @@
 rules_version = '2';
 
+// VMSNA Firestore security rules.
+//
+// These rules are the ONLY authorization boundary in the system: the browser
+// talks to Firestore directly, so anything permitted here is permitted to any
+// signed-in user with devtools open. Changes must be covered by tests/rules.
+//
+// Admin identity is an email allowlist today; it moves to custom claims in a
+// later phase. Keep this list in sync with ADMIN_EMAILS in functions/src/index.ts.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // DUAL-ACCEPT WINDOW.
+    //
+    // Admin identity is moving from this email list to a custom claim, synced
+    // from roles/{uid}. Both are accepted until every administrator has signed
+    // in once and confirmed their claim has landed (via /admin/roles, which
+    // shows each person their own decoded token).
+    //
+    // The email branch below is then removed in a SEPARATE deploy. Doing both
+    // at once risks locking every admin out with no way back except a
+    // service-account script. Steps: docs/RUNBOOK-admin-roles.md
     function isAdmin() {
-      return request.auth != null && request.auth.token.email in [
+      return signedIn() && (request.auth.token.admin == true || onLegacyAdminList());
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && request.auth.token.superAdmin == true;
+    }
+
+    function onLegacyAdminList() {
+      return request.auth.token.email in [
         'vikramkanagaraj@gmail.com',
         'vokkaligasangam@gmail.com',
         'sureshgowder@gmail.com',
@@ -17,36 +48,217 @@ service cloud.firestore {
         'skparamasivam@gmail.com',
         'drnandeesh@hotmail.com',
         'poornisaran@gmail.com',
+        'sivasrees@gmail.com',
         'thirumudi@gmail.com'
       ];
     }
-    
-    // Membership applications - users can create their own, admins can read/update all
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function onlyChanged(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // memberIndex is written only by Cloud Functions and holds nothing but a
+    // status and an access boolean, so it is cheap to consult from a rule.
+    // It exists because membershipApplications has random document IDs, which
+    // means a rule cannot look up the caller's own record.
+    function hasDirectoryAccess() {
+      return signedIn() && (
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/memberIndex/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/memberIndex/$(request.auth.uid)).data.access == true
+        )
+      );
+    }
+
+    // Fields an applicant may edit on their own record. status, adminNotified,
+    // approvedBy/At and rejectedBy/At are deliberately absent: without this
+    // restriction a pending member could simply write status = 'approved'
+    // and grant themselves access to the member directory.
+    function selfEditable() {
+      return [
+        'name', 'phone', 'street', 'city', 'state', 'zip',
+        'nativePlaceSelf', 'nativePlaceSpouse',
+        'profession', 'profileUrl',
+        'spouseName', 'spouseEmail', 'spousePhone',
+        'spouseProfession', 'spouseProfileUrl',
+        'childrenDetails', 'privacyLevel', 'updatedAt'
+      ];
+    }
+
+    function adminEditable() {
+      return [
+        'status', 'adminNotified', 'adminNotes',
+        'approvedAt', 'approvedBy',
+        'rejectedAt', 'rejectedBy', 'rejectionReason',
+        'updatedAt'
+      ];
+    }
+
     match /membershipApplications/{docId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow read: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      // A new application always starts pending and is owned by its creator.
+      allow create: if isOwner(request.resource.data.userId)
+                    && request.resource.data.status == 'pending';
+
+      // Own record, or admin.
+      //
+      // TRANSITIONAL — REMOVE THE THIRD DISJUNCT.
+      // The approved-record read is the remaining API-level exposure: it lets
+      // any signed-in member read every field of every approved application,
+      // including the ones a limited-profile member asked us to withhold.
+      // It stays only until the directory projection is populated and the new
+      // client is live, because removing it first empties the directory for
+      // every member. The removal steps are in docs/RUNBOOK-directory.md and
+      // should be a same-week follow-up, not a someday item.
+      allow read: if (signedIn() && isOwner(resource.data.userId))
+                  || isAdmin()
+                  || (signedIn() && resource.data.status == 'approved');
+
+      // Members may edit their own profile fields only; admins may change the
+      // review fields only. Neither can touch the other's.
+      allow update: if (isOwner(resource.data.userId) && onlyChanged(selfEditable()))
+                    || (isAdmin() && onlyChanged(adminEditable()));
+
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
-    
-    // Members directory - authenticated users can read and write their own
+
+    // The member directory as the client sees it. Written only by the
+    // projectMemberToDirectory function, which copies across just the fields a
+    // member's privacy level permits — so a limited profile contains a name
+    // and a state and nothing else, server-side. There is no field here for a
+    // client to over-fetch.
+    match /directory/{docId} {
+      allow read: if hasDirectoryAccess();
+      allow write: if false;
+    }
+
+    // Access oracle for the rule above. Function-written; a member may read
+    // their own to find out whether they are approved.
+    match /memberIndex/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Mentorship board. Member-to-member, so it uses the same access oracle as
+    // the directory. A member owns their own entries; the contact address is
+    // whatever they chose to put here, not their directory record, so sharing
+    // it is an explicit act rather than a side effect of posting.
+    match /mentorship/{docId} {
+      allow create: if hasDirectoryAccess()
+                    && request.resource.data.uid == request.auth.uid
+                    && validMentorship();
+      allow read: if hasDirectoryAccess();
+      allow update: if signedIn() && resource.data.uid == request.auth.uid && validMentorship();
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+    }
+
+    function validMentorship() {
+      return request.resource.data.kind in ['offer', 'request']
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.name.size() <= 120
+             && request.resource.data.field is string
+             && request.resource.data.field.size() > 0
+             && request.resource.data.field.size() <= 120
+             && request.resource.data.detail.size() <= 1000
+             && request.resource.data.keys().size() <= 10;
+    }
+
+    // Payment records, written by the Stripe webhook. A member may see their
+    // own; nothing here is client-writable, because a client that could write
+    // a payment could grant itself a membership.
+    match /payments/{docId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // Donations may be anonymous, so there is no owner to read them back.
+    match /donations/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Webhook idempotency ledger and its failure log. No client has any
+    // business reading or writing either.
+    match /stripeEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /stripeEventFailures/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Source of truth for admin identity. Written only by setAdminRole, which
+    // audits every change and refuses to remove the last super administrator.
+    // A client that could write here could make itself an admin.
+    match /roles/{uid} {
+      allow read: if isSuperAdmin() || isOwner(uid);
+      allow write: if false;
+    }
+
+    // Append-only record of privileged actions. Function-written.
+    match /adminAudit/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Legacy collection: rules existed but no code ever read or wrote it.
     match /members/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if isAdmin();
+      allow write: if false;
     }
-    
-    // Help requests - anyone can create (no auth required), only admins can read/update
+
+    // Welfare requests. Anyone may submit one without signing in, but the
+    // contents are education, medical and employment hardship disclosures —
+    // the most sensitive data the organisation holds. Admin-only to read.
+    // Nothing is deletable: retention is a policy decision, not a UI button.
     match /helpRequests/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow create: if validHelpRequest();
+      allow read: if isAdmin();
+      allow update: if isAdmin() && onlyChanged(['status', 'assignedTo', 'notes', 'acknowledgedAt']);
+      allow delete: if false;
     }
-    
-    // Contact messages - anyone can create (no auth required), only admins can read
+
+    function validHelpRequest() {
+      return request.resource.data.keys().hasAll(['name', 'email', 'requestType', 'status'])
+             && request.resource.data.status == 'pending'
+             && request.resource.data.requestType in ['Education', 'Medical', 'Employment', 'Other Services', 'General']
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.name.size() <= 120
+             && request.resource.data.email is string
+             && request.resource.data.email.size() <= 200
+             && request.resource.data.keys().size() <= 14;
+    }
+
     match /contactMessages/{docId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow create: if validContactMessage();
+      allow read: if isAdmin();
+      allow update: if isAdmin() && onlyChanged(['status', 'assignedTo', 'notes']);
+      allow delete: if false;
+    }
+
+    function validContactMessage() {
+      return request.resource.data.keys().hasAll(['name', 'email', 'subject', 'message', 'status'])
+             && request.resource.data.status == 'unread'
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.name.size() <= 120
+             && request.resource.data.email is string
+             && request.resource.data.email.size() <= 200
+             && request.resource.data.subject.size() <= 200
+             && request.resource.data.message is string
+             && request.resource.data.message.size() <= 5000
+             && request.resource.data.keys().size() <= 8;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

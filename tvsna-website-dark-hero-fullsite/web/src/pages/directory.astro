@@ -1,0 +1,467 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Member directory"
+  kicker="Members"
+  lead="Search member families by name, chapter, profession or native place."
+>
+  <section class="section">
+    <div class="container">
+      <!--
+        All states are prerendered as siblings and CSS picks one, so the right
+        layout is in the first paint rather than swapped in afterwards. No
+        member data is rendered server-side into any of them.
+      -->
+
+      <div data-gate="unknown">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span>
+          <span class="gate-loading__bar"></span>
+          <span class="gate-loading__bar"></span>
+        </div>
+      </div>
+
+      <div data-gate="guest">
+        <div class="pitch">
+          <h2>Inside the directory</h2>
+          <p>
+            Every approved member family, searchable by profession, chapter and
+            native place. It is how a student finds a mentor in the field they
+            are heading into, and how a family moving to a new city finds people
+            from home.
+          </p>
+          <ul class="pitch__list">
+            <li>Search by native village or district, not just by name</li>
+            <li>Members choose how much of their own profile is visible</li>
+            <li>Never public, never indexed, never shared outside VMSNA</li>
+          </ul>
+          <p class="pitch__cta">
+            <a class="btn btn--primary" href="/join/">Apply for membership</a>
+            <a class="btn btn--ghost" href="/login/">I already have an account</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="pending">
+        <div class="notice-card">
+          <h2>Your application is being reviewed</h2>
+          <p>
+            Thank you for applying. A committee member is looking at your
+            application and we will email you as soon as it has been reviewed.
+            The directory opens up once you are approved.
+          </p>
+          <p id="verify-prompt" hidden>
+            <strong>One thing first:</strong> your email address has not been
+            verified yet, and we cannot pass your application to the committee
+            until it is.
+          </p>
+          <p class="notice-card__cta">
+            <button class="btn btn--ghost" type="button" id="resend-verify">
+              Resend the verification email
+            </button>
+            <a class="btn btn--ghost" href="/account/">Your account</a>
+          </p>
+          <p class="status" data-verify-status hidden></p>
+        </div>
+      </div>
+
+      <div data-gate="unpaid">
+        <div class="notice-card">
+          <h2>Activate your membership to open the directory</h2>
+          <p>
+            Your application has been approved — thank you. One step left:
+            choose a membership, and the directory and the rest of the member
+            benefits open up.
+          </p>
+          <p class="notice-card__cta">
+            <a class="btn btn--primary" href="/membership/activate/">Activate membership</a>
+            <a class="btn btn--ghost" href="/membership/">What you get</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="rejected">
+        <div class="notice-card">
+          <h2>We could not approve this application</h2>
+          <p>
+            Your membership application was not approved. If you think this was
+            a mistake, or you would like to know more, please
+            <a href="/contact/">get in touch</a> — a committee member will
+            respond personally.
+          </p>
+        </div>
+      </div>
+
+      <div data-gate="member">
+        <div class="filters">
+          <div class="field">
+            <label for="q-name">Name</label>
+            <input id="q-name" type="search" autocomplete="off" placeholder="Search names…" />
+          </div>
+          <div class="field">
+            <label for="q-place">Native place</label>
+            <input id="q-place" type="search" autocomplete="off" placeholder="Village or district…" />
+          </div>
+          <div class="field">
+            <label for="q-prof">Profession</label>
+            <input id="q-prof" type="search" autocomplete="off" placeholder="Engineer, doctor…" />
+          </div>
+          <div class="field">
+            <label for="q-state">State or province</label>
+            <input id="q-state" type="search" autocomplete="off" placeholder="TX, ON…" />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn btn--ghost btn--sm" type="button" id="clear">Clear filters</button>
+          <p class="count" role="status" aria-live="polite" id="count">Loading the directory…</p>
+        </div>
+
+        <div class="table-wrap">
+          <table class="dir">
+            <caption class="visually-hidden">Approved VMSNA member families</caption>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Location</th>
+                <th scope="col">Native place</th>
+                <th scope="col">Profession</th>
+                <th scope="col">Contact</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <p class="privacy-note">
+          Members who chose a limited profile appear with their name and state
+          only. Nothing further about them is sent to your browser.
+        </p>
+      </div>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth } from '../lib/authStore';
+
+  startAuth();
+
+  interface Row {
+    id: string;
+    name?: string;
+    city?: string;
+    state?: string;
+    nativePlaceSelf?: string;
+    profession?: string;
+    profileUrl?: string;
+    email?: string;
+    phone?: string;
+    privacyLevel?: string;
+    isSpouseEntry?: boolean;
+  }
+
+  let all: Row[] = [];
+  let loaded = false;
+
+  const rowsEl = document.getElementById('rows');
+  const countEl = document.getElementById('count');
+
+  const inputs = {
+    name: document.getElementById('q-name') as HTMLInputElement | null,
+    place: document.getElementById('q-place') as HTMLInputElement | null,
+    prof: document.getElementById('q-prof') as HTMLInputElement | null,
+    state: document.getElementById('q-state') as HTMLInputElement | null,
+  };
+
+  /* Built with createElement and textContent rather than innerHTML, so a
+     member's own text can never be interpreted as markup. */
+  function cell(text: string, muted = false) {
+    const td = document.createElement('td');
+    td.textContent = text || '—';
+    if (muted) td.className = 'muted';
+    return td;
+  }
+
+  function linkCell(row: Row) {
+    const td = document.createElement('td');
+    if (!row.email && !row.phone) {
+      td.textContent = '—';
+      return td;
+    }
+    if (row.email) {
+      const a = document.createElement('a');
+      a.href = `mailto:${row.email}`;
+      a.textContent = row.email;
+      td.append(a);
+    }
+    if (row.phone) {
+      if (row.email) td.append(document.createTextNode(' · '));
+      td.append(document.createTextNode(row.phone));
+    }
+    return td;
+  }
+
+  function render(list: Row[]) {
+    if (!rowsEl || !countEl) return;
+    rowsEl.replaceChildren();
+
+    countEl.textContent =
+      list.length === all.length
+        ? `${list.length} ${list.length === 1 ? 'member' : 'members'}`
+        : `${list.length} of ${all.length} members`;
+
+    if (list.length === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 5;
+      td.className = 'empty-row';
+      td.textContent = 'No members match those filters.';
+      tr.append(td);
+      rowsEl.append(tr);
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    for (const r of list) {
+      const tr = document.createElement('tr');
+      const limited = r.privacyLevel === 'limited';
+
+      const nameTd = document.createElement('th');
+      nameTd.scope = 'row';
+      nameTd.textContent = r.name || '—';
+      if (r.isSpouseEntry) {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = 'spouse';
+        nameTd.append(' ', tag);
+      }
+      tr.append(nameTd);
+
+      if (limited) {
+        tr.append(cell(r.state || '—'));
+        tr.append(cell('Limited profile', true));
+        tr.append(cell('—', true));
+        tr.append(cell('—', true));
+      } else {
+        tr.append(cell([r.city, r.state].filter(Boolean).join(', ')));
+        tr.append(cell(r.nativePlaceSelf || '—'));
+        tr.append(cell(r.profession || '—'));
+        tr.append(linkCell(r));
+      }
+      frag.append(tr);
+    }
+    rowsEl.append(frag);
+  }
+
+  function applyFilters() {
+    const q = {
+      name: inputs.name?.value.trim().toLowerCase() ?? '',
+      place: inputs.place?.value.trim().toLowerCase() ?? '',
+      prof: inputs.prof?.value.trim().toLowerCase() ?? '',
+      state: inputs.state?.value.trim().toLowerCase() ?? '',
+    };
+    render(
+      all.filter(
+        (r) =>
+          (!q.name || (r.name ?? '').toLowerCase().includes(q.name)) &&
+          (!q.place || (r.nativePlaceSelf ?? '').toLowerCase().includes(q.place)) &&
+          (!q.prof || (r.profession ?? '').toLowerCase().includes(q.prof)) &&
+          (!q.state || (r.state ?? '').toLowerCase().includes(q.state)),
+      ),
+    );
+  }
+
+  Object.values(inputs).forEach((el) => el?.addEventListener('input', applyFilters));
+  document.getElementById('clear')?.addEventListener('click', () => {
+    Object.values(inputs).forEach((el) => el && (el.value = ''));
+    applyFilters();
+  });
+
+  async function loadDirectory() {
+    if (loaded) return;
+    loaded = true;
+    try {
+      const [{ db }, { collection, getDocs }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/firestore'),
+      ]);
+      /* The directory collection is written by a Cloud Function and contains
+         only the fields each member's privacy level permits. There is nothing
+         here to over-fetch. */
+      const snap = await getDocs(collection(db(), 'directory'));
+      all = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<Row, 'id'>) }))
+        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+      applyFilters();
+    } catch (error) {
+      console.error('Directory load failed', error);
+      if (countEl) countEl.textContent = 'The directory could not be loaded. Please refresh, or contact us if it keeps happening.';
+    }
+  }
+
+  document.getElementById('resend-verify')?.addEventListener('click', async () => {
+    const box = document.querySelector<HTMLElement>('[data-verify-status]');
+    const [{ auth }, { sendEmailVerification }] = await Promise.all([
+      import('../lib/firebase'),
+      import('firebase/auth'),
+    ]);
+    const user = auth().currentUser;
+    if (!user || !box) return;
+    try {
+      await sendEmailVerification(user);
+      box.hidden = false;
+      box.dataset.tone = 'success';
+      box.textContent = 'Verification email sent. Please check your inbox and your spam folder.';
+    } catch {
+      box.hidden = false;
+      box.dataset.tone = 'error';
+      box.textContent = 'We could not send that just now. Please try again in a few minutes.';
+    }
+  });
+
+  onAuth((s) => {
+    if (!s.ready) return;
+    if (s.state === 'member') loadDirectory();
+    if (s.state === 'pending') {
+      const prompt = document.getElementById('verify-prompt');
+      if (prompt) prompt.hidden = s.verified;
+    }
+  });
+</script>
+
+<style>
+  .pitch,
+  .notice-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 58ch;
+  }
+
+  .pitch h2,
+  .notice-card h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .pitch__list {
+    margin: var(--s-4) 0 0;
+    padding-left: var(--s-5);
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--t-sm);
+  }
+
+  .pitch__cta,
+  .notice-card__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+
+  .notice-card p + p {
+    margin-top: var(--s-3);
+  }
+
+  .filters {
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+    margin-bottom: var(--s-4);
+  }
+
+  .filters .field {
+    margin-bottom: 0;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-4);
+    margin-bottom: var(--s-4);
+  }
+
+  .count {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+  }
+
+  .dir {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--t-sm);
+    min-width: 46rem;
+  }
+
+  .dir th,
+  .dir td {
+    text-align: left;
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  .dir thead th {
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface-sunk);
+    position: sticky;
+    top: 0;
+  }
+
+  .dir tbody tr:last-child th,
+  .dir tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .dir tbody th {
+    font-family: var(--font-sans);
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .dir :global(.muted) {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .dir :global(.tag) {
+    font-size: var(--t-xs);
+    background: var(--surface-sunk);
+    border-radius: 999px;
+    padding: 1px var(--s-2);
+    color: var(--text-muted);
+    font-style: normal;
+    font-weight: 400;
+  }
+
+  .dir :global(.empty-row) {
+    text-align: center;
+    padding: var(--s-7);
+    color: var(--text-muted);
+  }
+
+  .privacy-note {
+    margin-top: var(--s-4);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+</style>

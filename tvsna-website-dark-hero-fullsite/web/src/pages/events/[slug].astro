@@ -1,0 +1,109 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  // Drafts build no page at all, so a work-in-progress event cannot be reached
+  // by URL or picked up by the sitemap.
+  const events = (await getCollection('events')).filter((e) => !e.data.draft);
+  return events.map((event) => ({ params: { slug: event.id }, props: { event } }));
+}
+
+const { event } = Astro.props;
+const d = event.data;
+const { Content } = await render(event);
+
+const isPast = (d.end ?? d.start) < new Date();
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Event',
+  name: d.title,
+  startDate: d.start.toISOString(),
+  ...(d.end ? { endDate: d.end.toISOString() } : {}),
+  eventStatus: 'https://schema.org/EventScheduled',
+  location: { '@type': 'Place', name: d.location },
+  description: d.summary,
+  organizer: { '@type': 'NGO', name: 'Vokkaliga Mahajana Sangam North America' },
+};
+---
+
+<BaseLayout title={d.title} description={d.summary} noindex={d.draft}>
+  <article class="section">
+    <div class="container container-narrow">
+      <p class="back"><a href="/events/">&larr; All events</a></p>
+
+      {d.draft && (
+        <p class="notice"><strong>Draft.</strong> This event is not published.</p>
+      )}
+
+      <p class="kicker">{isPast ? 'Past event' : 'Upcoming'} &middot; {d.chapter} chapter</p>
+      <h1>{d.title}</h1>
+
+      <dl class="facts">
+        <div><dt>When</dt><dd>{fmt(d.start)}{d.end && <> – {fmt(d.end)}</>}</dd></div>
+        <div><dt>Where</dt><dd>{d.location}</dd></div>
+      </dl>
+
+      <p class="lead">{d.summary}</p>
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      {!isPast && d.registrationUrl && (
+        <p class="cta">
+          <a class="btn btn--primary" href={d.registrationUrl} rel="noopener">Register for this event</a>
+        </p>
+      )}
+    </div>
+  </article>
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  .back { font-size: var(--t-sm); margin-bottom: var(--s-5); }
+
+  .notice {
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-sunk);
+    border-radius: var(--radius);
+    padding: var(--s-4);
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-5);
+  }
+
+  h1 { margin-block: var(--s-3) var(--s-5); }
+
+  .facts {
+    display: grid;
+    gap: var(--s-3) var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+    padding-block: var(--s-4);
+    border-block: 1px solid var(--line);
+    margin-bottom: var(--s-5);
+  }
+
+  .facts dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .facts dd { margin: 2px 0 0; }
+
+  .prose { margin-top: var(--s-5); }
+  .prose :global(p + p) { margin-top: var(--s-4); }
+  .prose :global(blockquote) {
+    margin: var(--s-5) 0;
+    padding-left: var(--s-4);
+    border-left: 3px solid var(--line-strong);
+    color: var(--text-muted);
+  }
+
+  .cta { margin-top: var(--s-6); }
+</style>

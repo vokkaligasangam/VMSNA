@@ -11,11 +11,152 @@
   },
   "hosting": {
     "site": "vmsna",
-    "public": "public",
+    "public": "web/dist",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "cleanUrls": false,
+    "trailingSlash": true,
+    "redirects": [
+      {
+        "source": "/index.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/about.html",
+        "destination": "/about/",
+        "type": 301
+      },
+      {
+        "source": "/chapters.html",
+        "destination": "/chapters/",
+        "type": 301
+      },
+      {
+        "source": "/events.html",
+        "destination": "/events/",
+        "type": 301
+      },
+      {
+        "source": "/media.html",
+        "destination": "/media/",
+        "type": 301
+      },
+      {
+        "source": "/donate.html",
+        "destination": "/donate/",
+        "type": 301
+      },
+      {
+        "source": "/help.html",
+        "destination": "/support/",
+        "type": 301
+      },
+      {
+        "source": "/contact.html",
+        "destination": "/contact/",
+        "type": 301
+      },
+      {
+        "source": "/debug-hasini.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/fix-hasini.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/manual-notify.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/migrate-approve-existing.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/admin.html",
+        "destination": "/admin/queue/",
+        "type": 301
+      },
+      {
+        "source": "/membership.html",
+        "destination": "/membership/",
+        "type": 301
+      },
+      {
+        "source": "/dashboard.html",
+        "destination": "/account/",
+        "type": 301
+      }
+    ],
+    "headers": [
+      {
+        "source": "/_astro/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(html)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/stripe/webhook",
+        "function": {
+          "functionId": "stripeWebhook",
+          "region": "us-central1"
+        }
+      }
     ]
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "ui": {
+      "enabled": true
+    },
+    "singleProjectMode": true
   }
 }

@@ -1,0 +1,282 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  lead?: string;
+  superOnly?: boolean;
+}
+
+const { title, lead, superOnly = false } = Astro.props;
+
+const tools = [
+  { href: '/admin/', label: 'Overview' },
+  { href: '/admin/queue/', label: 'Approval queue' },
+  { href: '/admin/welfare/', label: 'Welfare inbox' },
+  { href: '/admin/contact/', label: 'Contact inbox' },
+  { href: '/admin/diagnostics/', label: 'Diagnostics' },
+  { href: '/admin/roles/', label: 'Administrators' },
+];
+
+const path = Astro.url.pathname;
+---
+
+<BaseLayout title={`${title} — admin`} noindex={true}>
+  <!--
+    Admin pages never render from the localStorage hint. The hint is a
+    rendering convenience for member pages; here we always force a token
+    refresh and check the claim, so a forged hint gets a spinner and then a
+    refusal. Firestore rules are still the real boundary — nothing below is
+    trusted by the server.
+  -->
+  <div class="admin" data-admin-root="checking" data-super-only={superOnly ? 'true' : null}>
+    <div class="container">
+      <div data-admin="checking">
+        <div class="gate-loading" aria-hidden="true">
+          <span class="gate-loading__bar"></span>
+          <span class="gate-loading__bar"></span>
+        </div>
+        <p class="checking-note">Checking your access…</p>
+      </div>
+
+      <div data-admin="denied">
+        <div class="denied">
+          <h1>Administrator access required</h1>
+          <p id="denied-reason">This area is for VMSNA committee members.</p>
+          <p class="denied__cta">
+            <a class="btn btn--primary" href="/login/?next=/admin/">Sign in</a>
+            <a class="btn btn--ghost" href="/">Back to the site</a>
+          </p>
+        </div>
+      </div>
+
+      <div data-admin="ok">
+        <header class="admin__head">
+          <div>
+            <p class="kicker">VMSNA admin</p>
+            <h1>{title}</h1>
+            {lead && <p class="lead admin__lead">{lead}</p>}
+          </div>
+          <p class="admin__who">
+            Signed in as <strong data-admin-email>—</strong>
+            <button class="linkish" type="button" data-admin-signout>Sign out</button>
+          </p>
+        </header>
+
+        <nav class="admin__nav" aria-label="Admin tools">
+          <ul>
+            {
+              tools.map((t) => (
+                <li>
+                  <a href={t.href} aria-current={path === t.href ? 'page' : undefined}>
+                    {t.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+
+        <slot />
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { signOutNow } from '../lib/authStore';
+
+  const root = document.querySelector<HTMLElement>('[data-admin-root]')!;
+  const superOnly = root.dataset.superOnly === 'true';
+
+  function setState(state: 'checking' | 'denied' | 'ok') {
+    root.dataset.adminRoot = state;
+  }
+
+  function deny(reason: string) {
+    const el = document.getElementById('denied-reason');
+    if (el) el.textContent = reason;
+    setState('denied');
+  }
+
+  document.querySelectorAll('[data-admin-signout]').forEach((el) =>
+    el.addEventListener('click', async () => {
+      await signOutNow();
+      location.assign('/');
+    }),
+  );
+
+  /*
+    If the auth check never resolves the page would sit on its spinner
+    indefinitely — which is what happens when a dynamic import fails, for
+    instance when a cached HTML page asks for a chunk a later deploy removed.
+    Fail visibly instead.
+  */
+  const watchdog = window.setTimeout(() => {
+    if (root.dataset.adminRoot === 'checking') {
+      deny('We could not check your access — the page may be out of date. Please reload.');
+    }
+  }, 12000);
+
+  (async () => {
+    let auth: typeof import('../lib/firebase')['auth'];
+    let onAuthStateChanged: typeof import('firebase/auth')['onAuthStateChanged'];
+    try {
+      [{ auth }, { onAuthStateChanged }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/auth'),
+      ]);
+    } catch (error) {
+      console.error('Could not load the auth module', error);
+      window.clearTimeout(watchdog);
+      deny('We could not load the sign-in check. Please reload the page.');
+      return;
+    }
+
+    onAuthStateChanged(auth(), async (user) => {
+      window.clearTimeout(watchdog);
+      if (!user) {
+        deny('You are not signed in.');
+        return;
+      }
+      try {
+        // Forced refresh: a claim granted minutes ago must be visible now, and
+        // a revoked one must stop working now.
+        const token = await user.getIdTokenResult(true);
+        const isAdmin = token.claims.admin === true;
+        const isSuper = token.claims.superAdmin === true;
+
+        if (!isAdmin) {
+          deny(
+            `Signed in as ${user.email}, but this account does not have administrator access.`,
+          );
+          return;
+        }
+        if (superOnly && !isSuper) {
+          deny('This page is restricted to super administrators.');
+          return;
+        }
+
+        document.querySelectorAll('[data-admin-email]').forEach((el) => {
+          el.textContent = user.email ?? '—';
+        });
+        setState('ok');
+        window.dispatchEvent(new CustomEvent('admin:ready', { detail: { user, isSuper } }));
+      } catch (error) {
+        console.error('Admin check failed', error);
+        deny('We could not verify your access. Please sign in again.');
+      }
+    });
+  })();
+</script>
+
+<style>
+  .admin {
+    padding-block: var(--s-6) var(--s-8);
+  }
+
+  .admin :global([data-admin]) {
+    display: none;
+  }
+
+  .admin[data-admin-root='checking'] :global([data-admin='checking']),
+  .admin[data-admin-root='denied'] :global([data-admin='denied']),
+  .admin[data-admin-root='ok'] :global([data-admin='ok']) {
+    display: block;
+  }
+
+  .checking-note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .denied {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-6);
+    max-width: 52ch;
+  }
+
+  .denied h1 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .denied__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  .admin__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+
+  .admin__head h1 {
+    font-size: var(--t-2xl);
+    margin-top: var(--s-2);
+  }
+
+  .admin__lead {
+    margin-top: var(--s-3);
+    max-width: 60ch;
+  }
+
+  .admin__who {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    display: flex;
+    gap: var(--s-3);
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .admin__nav {
+    margin-block: var(--s-6);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .admin__nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-4);
+  }
+
+  .admin__nav a {
+    display: inline-block;
+    padding: var(--s-2) 0;
+    font-size: var(--t-sm);
+    color: var(--text-body);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .admin__nav a:hover {
+    color: var(--terra-dark);
+  }
+
+  .admin__nav a[aria-current='page'] {
+    color: var(--terra-dark);
+    border-bottom-color: var(--terra);
+  }
+
+  .linkish {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: var(--t-sm);
+    color: var(--terra-dark);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+</style>

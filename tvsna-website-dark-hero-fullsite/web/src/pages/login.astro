@@ -1,0 +1,226 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="Member log in"
+  kicker="Members"
+  lead="Sign in to reach the member directory and your profile."
+  noindex={true}
+>
+  <section class="section">
+    <div class="container login">
+      <div class="card">
+        <form id="login-form" novalidate>
+          <p class="status" data-form-status hidden></p>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required autocomplete="email" />
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button class="btn btn--primary" type="submit">Sign in</button>
+
+          <p class="alts">
+            <button class="linkish" type="button" id="forgot">Forgot your password?</button>
+            <span aria-hidden="true">·</span>
+            <button class="linkish" type="button" id="resend">Resend verification email</button>
+          </p>
+        </form>
+      </div>
+
+      <aside class="aside">
+        <h2>Not a member yet?</h2>
+        <p>
+          Membership is open to Tamil Nadu Vokkaliga families across the United
+          States and Canada, and to members in India who want to stay connected.
+        </p>
+        <p><a class="btn btn--ghost" href="/join/">Apply for membership</a></p>
+        <p class="aside__note">
+          Applications are reviewed by the committee. You will get an email once
+          yours has been looked at.
+        </p>
+      </aside>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { startAuth, onAuth } from '../lib/authStore';
+
+  const form = document.getElementById('login-form') as HTMLFormElement;
+  const box = form.querySelector<HTMLElement>('[data-form-status]')!;
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const emailEl = document.getElementById('email') as HTMLInputElement;
+  const passwordEl = document.getElementById('password') as HTMLInputElement;
+
+  function say(tone: 'success' | 'error' | 'info', message: string) {
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  function busy(on: boolean, label = 'Sign in') {
+    submit.disabled = on;
+    submit.textContent = on ? 'Signing in…' : label;
+  }
+
+  // Already signed in? Go where they were heading.
+  startAuth();
+  onAuth((s) => {
+    if (s.ready && s.user && s.verified) {
+      const next = new URLSearchParams(location.search).get('next');
+      location.replace(next && next.startsWith('/') ? next : '/account/');
+    }
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    busy(true);
+
+    try {
+      const [{ auth }, { signInWithEmailAndPassword }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/auth'),
+      ]);
+      const cred = await signInWithEmailAndPassword(
+        auth(),
+        emailEl.value.trim(),
+        passwordEl.value,
+      );
+
+      if (!cred.user.emailVerified) {
+        say(
+          'info',
+          'Your email is not verified yet. Check your inbox — and your spam folder — for the verification link, then sign in again.',
+        );
+        busy(false);
+        return;
+      }
+      // onAuth above handles the redirect.
+    } catch (error: any) {
+      const code = error?.code ?? '';
+      say(
+        'error',
+        code === 'auth/too-many-requests'
+          ? 'Too many attempts. Please wait a few minutes and try again.'
+          : 'That email and password combination was not recognised.',
+      );
+      busy(false);
+    }
+  });
+
+  document.getElementById('forgot')!.addEventListener('click', async () => {
+    const email = emailEl.value.trim();
+    if (!email) {
+      say('error', 'Enter your email address above first, then choose "Forgot your password?".');
+      emailEl.focus();
+      return;
+    }
+    try {
+      const [{ auth }, { sendPasswordResetEmail }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/auth'),
+      ]);
+      await sendPasswordResetEmail(auth(), email);
+    } catch (error) {
+      console.error('Password reset failed', error);
+    }
+    // Deliberately the same message either way: confirming whether an address
+    // is registered would let anyone enumerate the membership.
+    say(
+      'success',
+      `If ${email} has an account, a password reset link is on its way. The link expires in one hour.`,
+    );
+  });
+
+  document.getElementById('resend')!.addEventListener('click', async () => {
+    const email = emailEl.value.trim();
+    const password = passwordEl.value;
+    if (!email || !password) {
+      say('error', 'Enter your email and password above, then choose "Resend verification email".');
+      return;
+    }
+    try {
+      const [{ auth }, { signInWithEmailAndPassword, sendEmailVerification, signOut }] =
+        await Promise.all([import('../lib/firebase'), import('firebase/auth')]);
+      const cred = await signInWithEmailAndPassword(auth(), email, password);
+      if (cred.user.emailVerified) {
+        say('info', 'That email is already verified — you can sign in normally.');
+        await signOut(auth());
+        return;
+      }
+      await sendEmailVerification(cred.user);
+      await signOut(auth());
+      say('success', 'Verification email sent. Please check your inbox and your spam folder.');
+    } catch {
+      say('error', 'We could not send that. Check the email and password and try again.');
+    }
+  });
+</script>
+
+<style>
+  .login {
+    display: grid;
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 52rem) {
+    .login {
+      grid-template-columns: 1.3fr 1fr;
+      gap: var(--s-7);
+    }
+  }
+
+  .alts {
+    margin-top: var(--s-5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-3);
+    align-items: center;
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .linkish {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: var(--t-sm);
+    color: var(--terra-dark);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    cursor: pointer;
+  }
+
+  .linkish:hover {
+    color: var(--terra);
+  }
+
+  .aside h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-3);
+  }
+
+  .aside p + p {
+    margin-top: var(--s-4);
+  }
+
+  .aside__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

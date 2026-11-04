@@ -1,0 +1,127 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  title="About VMSNA"
+  kicker="Who we are"
+  lead="A volunteer-led, non-profit community organisation for Tamil Nadu Vokkaliga families across North America — preserving our heritage and building the connections that hold a diaspora together."
+>
+  <section class="section">
+    <div class="container two">
+      <div class="card">
+        <h2>Our purpose</h2>
+        <p>
+          To create a welcoming home for community, culture and service: a place
+          where families connect, young people grow into confident leaders, and
+          our elders stay engaged and celebrated.
+        </p>
+      </div>
+      <div class="card">
+        <h2>About Tamil Nadu Vokkaligas</h2>
+        <p>
+          Vokkaligas, also known as Gowdas, are an agrarian community with deep
+          roots across southern India. VMSNA is for the Tamil Nadu Vokkaliga
+          diaspora — our language, our customs, our harvest celebrations, and the
+          values of hard work, learning and service we were raised on.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section secular">
+    <div class="container">
+      <div class="measure">
+        <p class="kicker">A note on who can join</p>
+        <h2>A cultural organisation, not a religious one</h2>
+        <p class="secular__p">
+          VMSNA is a cultural and mutual-support organisation. We are not
+          affiliated with any religion, temple or religious trust, and we do not
+          organise worship. Our members come from Hindu family backgrounds and
+          many observe those traditions at home — that is theirs, not ours.
+        </p>
+        <p class="secular__p">
+          What we organise is language teaching, harvest and cultural
+          celebrations, youth and senior programmes, and assistance for families
+          who need it. Every Tamil Nadu Vokkaliga family is welcome regardless of
+          faith or practice.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>How we work</h2>
+      <div class="three">
+        <div>
+          <h3>Chapter-led</h3>
+          <p>
+            Seven chapters run their own gatherings, classes and service days.
+            National programmes are built from what the chapters are already
+            doing, not imposed on them.
+          </p>
+        </div>
+        <div>
+          <h3>Volunteer-run</h3>
+          <p>
+            Every office bearer and committee member is an unpaid volunteer.
+            Elections are held each term and any member may stand.
+          </p>
+        </div>
+        <div>
+          <h3>Accountable</h3>
+          <p>
+            Transparent budgeting, annual reports and open volunteer calls.
+            Membership dues and donations fund scholarships, youth programmes
+            and family assistance.
+          </p>
+        </div>
+      </div>
+      <p class="cta-line">
+        <a href="/leadership/">Meet the people who run VMSNA</a>
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .two {
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr));
+  }
+
+  .two h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-3);
+  }
+
+  .secular {
+    background: var(--surface-sunk);
+  }
+
+  .secular h2 {
+    margin-block: var(--s-3) var(--s-4);
+  }
+
+  .secular__p + .secular__p {
+    margin-top: var(--s-4);
+  }
+
+  .three {
+    display: grid;
+    gap: var(--s-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+    margin-top: var(--s-5);
+  }
+
+  .three h3 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
+
+  .cta-line {
+    margin-top: var(--s-6);
+  }
+</style>

@@ -1,0 +1,77 @@
+---
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/inter';
+import '@fontsource/noto-serif-tamil';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+import SiteHeader from '../components/layout/SiteHeader.astro';
+import SiteFooter from '../components/layout/SiteFooter.astro';
+import AuthBoot from '../components/gate/AuthBoot.astro';
+import { site } from '../config/site';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Appended to the site name in <title>. Set false for the homepage. */
+  suffix?: boolean;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  suffix = true,
+  noindex = false,
+} = Astro.props;
+
+const pageTitle = suffix ? `${title} — ${site.name}` : title;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? site.url).href;
+
+const orgJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'NGO',
+  name: site.legalName,
+  alternateName: site.name,
+  url: site.url,
+  email: site.email,
+  description: site.description,
+  areaServed: ['United States', 'Canada', 'India'],
+  sameAs: [site.social.facebook],
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <AuthBoot />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.legalName} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <meta name="theme-color" content="#faf5ec" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <script type="application/ld+json" set:html={JSON.stringify(orgJsonLd)} is:inline />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <SiteHeader />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

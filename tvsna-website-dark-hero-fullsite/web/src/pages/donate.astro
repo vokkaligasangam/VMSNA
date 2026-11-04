@@ -1,0 +1,298 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+
+const presets = [25, 50, 100, 250];
+---
+
+<PageLayout
+  title="Donate"
+  kicker="Support the work"
+  lead="Donations fund scholarships, youth and language programmes, and direct assistance to member families who need it."
+>
+  <section class="section">
+    <div class="container give">
+      <div class="panel">
+        <h2>Make a donation</h2>
+
+        <form id="donate-form" novalidate>
+          <fieldset class="freq">
+            <legend class="visually-hidden">How often</legend>
+            <label class="seg"><input type="radio" name="freq" value="once" checked /><span>One time</span></label>
+            <label class="seg"><input type="radio" name="freq" value="monthly" /><span>Monthly</span></label>
+          </fieldset>
+
+          <div class="amounts" role="group" aria-label="Amount">
+            {
+              presets.map((p) => (
+                <button type="button" class="amount" data-amount={p}>
+                  ${p}
+                </button>
+              ))
+            }
+          </div>
+
+          <div class="field">
+            <label for="custom">Or another amount</label>
+            <div class="custom">
+              <span aria-hidden="true">$</span>
+              <input id="custom" name="custom" type="number" min="5" max="20000" step="1" inputmode="decimal" placeholder="0" />
+              <select id="currency" aria-label="Currency">
+                <option value="usd">USD</option>
+                <option value="cad">CAD</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="status" data-give-status hidden></p>
+          <button class="btn btn--primary" type="submit" id="give">Continue to payment</button>
+          <p class="secure">
+            Payment is handled by Stripe. Card details are entered on Stripe's
+            own pages and never reach vmsna.org.
+          </p>
+        </form>
+      </div>
+
+      <aside>
+        <section class="panel">
+          <h2>Where it goes</h2>
+          <ul class="uses">
+            <li><strong>Scholarships</strong> for students in member families.</li>
+            <li><strong>Youth and language programmes</strong> run by the chapters.</li>
+            <li><strong>Family assistance</strong> — education, medical and employment support.</li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2>Tax-deductible in the United States</h2>
+          <p class="note">
+            VMSNA is a registered 501(c)(3) non-profit. Donations from US
+            taxpayers are tax-deductible to the extent allowed by law. You will
+            receive a receipt by email, and a consolidated statement each
+            January.
+          </p>
+          <p class="note">
+            <strong>EIN:</strong> <span class="todo">to be added</span> · No goods
+            or services are provided in exchange for a donation.
+          </p>
+        </section>
+
+        <section class="panel">
+          <h2>Sponsor a programme</h2>
+          <p class="note">
+            To fund a named scholarship or a chapter's classes,
+            <a href="/contact/?subject=Sponsorship">talk to us</a> and we will
+            put you with the committee that runs it.
+          </p>
+        </section>
+      </aside>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { readableError } from '../lib/adminApi';
+
+  const form = document.getElementById('donate-form') as HTMLFormElement;
+  const custom = document.getElementById('custom') as HTMLInputElement;
+  const currency = document.getElementById('currency') as HTMLSelectElement;
+  const submit = document.getElementById('give') as HTMLButtonElement;
+  let selected: number | null = null;
+
+  function say(tone: 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>('[data-give-status]');
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.amount').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      selected = Number(btn.dataset.amount);
+      custom.value = '';
+      document.querySelectorAll('.amount').forEach((b) => b.classList.toggle('amount--on', b === btn));
+    }),
+  );
+
+  custom.addEventListener('input', () => {
+    selected = null;
+    document.querySelectorAll('.amount').forEach((b) => b.classList.remove('amount--on'));
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const dollars = selected ?? Number(custom.value);
+    if (!dollars || dollars < 5) {
+      say('error', 'Please choose an amount of $5 or more.');
+      custom.focus();
+      return;
+    }
+
+    const recurring =
+      (document.querySelector('input[name="freq"]:checked') as HTMLInputElement)?.value === 'monthly';
+
+    submit.disabled = true;
+    submit.textContent = 'Opening Stripe…';
+    say('info', 'Taking you to Stripe’s secure checkout…');
+
+    try {
+      const [{ functions }, { httpsCallable }] = await Promise.all([
+        import('../lib/firebase'),
+        import('firebase/functions'),
+      ]);
+      const result = await httpsCallable(functions(), 'createDonationSession')({
+        // Cents, as an integer — never a float, and never a price id.
+        amount: Math.round(dollars * 100),
+        currency: currency.value,
+        recurring,
+      });
+      const { url } = result.data as { url: string };
+      if (!url) throw new Error('Stripe did not return a checkout URL.');
+      location.assign(url);
+    } catch (error) {
+      say('error', readableError(error));
+      submit.disabled = false;
+      submit.textContent = 'Continue to payment';
+    }
+  });
+
+  if (new URLSearchParams(location.search).get('cancelled')) {
+    say('info', 'No payment was taken. You can try again whenever you are ready.');
+  }
+</script>
+
+<style>
+  .give {
+    display: grid;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  @media (min-width: 58rem) {
+    .give {
+      grid-template-columns: 1.3fr 1fr;
+      gap: var(--s-6);
+    }
+  }
+
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+  }
+
+  .panel + .panel {
+    margin-top: var(--s-4);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-4);
+  }
+
+  .freq {
+    border: 0;
+    padding: 0;
+    margin: 0 0 var(--s-5);
+    display: flex;
+    gap: var(--s-2);
+  }
+
+  .seg input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .seg span {
+    display: inline-block;
+    padding: var(--s-2) var(--s-4);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font-size: var(--t-sm);
+    cursor: pointer;
+  }
+
+  .seg input:checked + span {
+    background: var(--soil);
+    border-color: var(--soil);
+    color: var(--text-on-dark);
+  }
+
+  .seg input:focus-visible + span {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .amounts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+    gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+
+  .amount {
+    min-height: 44px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--cream);
+    color: var(--text);
+    font-size: var(--t-base);
+    cursor: pointer;
+  }
+
+  .amount:hover {
+    border-color: var(--terra);
+  }
+
+  .amount--on {
+    background: var(--terra);
+    border-color: var(--terra);
+    color: #fff;
+  }
+
+  .custom {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+
+  .custom span {
+    color: var(--text-muted);
+  }
+
+  .custom input {
+    flex: 1;
+  }
+
+  .custom select {
+    padding: var(--s-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    color: var(--text);
+    font-size: var(--t-sm);
+  }
+
+  .secure,
+  .note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-top: var(--s-3);
+  }
+
+  .uses {
+    display: grid;
+    gap: var(--s-3);
+    padding-left: var(--s-5);
+    font-size: var(--t-sm);
+  }
+
+  .todo {
+    background: #f6e9cf;
+    border-radius: 3px;
+    padding: 1px 6px;
+  }
+</style>

@@ -1,0 +1,117 @@
+---
+import { getCollection, render } from 'astro:content';
+import { Image } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const albums = (await getCollection('albums')).filter((a) => !a.data.draft);
+  return albums.map((album) => ({ params: { album: album.id }, props: { album } }));
+}
+
+const { album } = Astro.props;
+const d = album.data;
+const { Content } = await render(album);
+
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+---
+
+<BaseLayout title={d.title} description={d.summary}>
+  <article class="section">
+    <div class="container">
+      <p class="back"><a href="/media/">&larr; All albums</a></p>
+
+      <header class="head">
+        <p class="kicker">{d.chapter} &middot; {fmt(d.date)}</p>
+        <h1>{d.title}</h1>
+        <p class="lead measure">{d.summary}</p>
+        <p class="where">{d.location}</p>
+      </header>
+
+      <div class="prose measure">
+        <Content />
+      </div>
+
+      {
+        d.photos.length > 0 ? (
+          <ul class="photos">
+            {d.photos.map((p) => (
+              <li>
+                <Image
+                  src={p.src}
+                  alt={p.caption ?? ''}
+                  widths={[400, 800, 1200]}
+                  sizes="(min-width: 60rem) 30vw, (min-width: 40rem) 45vw, 90vw"
+                  loading="lazy"
+                />
+                {p.caption && <p class="cap">{p.caption}</p>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="none">Photographs for this album are still being collected.</p>
+        )
+      }
+
+      <p class="ask">
+        Have photographs from this event?
+        <a href={`/contact/?subject=${encodeURIComponent('Photographs: ' + d.title)}`}>
+          Send them to us</a>.
+      </p>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .back {
+    font-size: var(--t-sm);
+    margin-bottom: var(--s-5);
+  }
+
+  .head h1 {
+    margin-block: var(--s-3) var(--s-4);
+  }
+
+  .where {
+    margin-top: var(--s-3);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .prose {
+    margin-top: var(--s-5);
+  }
+
+  .prose :global(p + p) {
+    margin-top: var(--s-4);
+  }
+
+  .photos {
+    list-style: none;
+    padding: 0;
+    margin: var(--s-6) 0 0;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  }
+
+  .photos :global(img) {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    background: var(--surface-sunk);
+  }
+
+  .cap {
+    margin-top: var(--s-2);
+    font-size: var(--t-xs);
+    color: var(--text-muted);
+  }
+
+  .none,
+  .ask {
+    margin-top: var(--s-6);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

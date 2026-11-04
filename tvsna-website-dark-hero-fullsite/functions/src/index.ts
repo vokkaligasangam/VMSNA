@@ -7,12 +7,22 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 import { setGlobalOptions } from "firebase-functions";
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import * as nodemailer from "nodemailer";
 import * as admin from "firebase-admin";
+import { requireAdmin } from "./lib/admin.js";
+
+export { projectMemberToDirectory, rebuildDirectory } from "./directory.js";
+export { deleteMyAccount } from "./account.js";
+export { syncRoleClaims, setAdminRole, listAdminRoles, whoAmI } from "./roles.js";
+export { notifyHelpRequest, notifyContactMessage } from "./inbox.js";
+export { getVerificationStatuses, diagnoseMember, requeueAdminNotification } from "./adminTools.js";
+export { createCheckoutSession, createPortalSession, createDonationSession } from "./stripe/sessions.js";
+export { stripeWebhook } from "./stripe/webhook.js";
+export { reconcileSubscriptions, grandfatherMemberships } from "./stripe/reconcile.js";
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -42,16 +52,13 @@ const gmailTransporter = nodemailer.createTransport({
     },
 });
 
-// Send approval email - allows authenticated users to trigger via client
+// Send approval email. Admin-only: this function sends VMSNA-branded mail to an
+// arbitrary address, so an unauthenticated caller could use it as an open relay.
 export const sendApprovalEmail = onCall({
     region: "us-central1",
-    invoker: "public",
     secrets: ["GMAIL_APP_PASSWORD"]
 }, async (request) => {
-    // Auth check temporarily disabled for testing
-    // if (!request.auth) {
-    //     throw new Error("Unauthenticated request");
-    // }
+    requireAdmin(request);
 
     const { email, name } = request.data;
 
@@ -434,13 +441,15 @@ export const checkVerifiedUsers = onSchedule(
 
 // Get user's email verification status (for admin panel)
 export const getUserVerificationStatus = onCall({
-    region: "us-central1",
-    invoker: "public"
+    region: "us-central1"
 }, async (request) => {
+    // Admin-only: this returns another user's email address for any UID.
+    requireAdmin(request);
+
     const { userId } = request.data;
 
     if (!userId) {
-        throw new Error("Missing userId");
+        throw new HttpsError("invalid-argument", "Missing userId");
     }
 
     try {

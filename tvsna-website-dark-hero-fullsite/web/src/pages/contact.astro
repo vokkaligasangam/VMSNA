@@ -1,0 +1,170 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+import { site } from '../config/site';
+---
+
+<PageLayout
+  title="Contact us"
+  kicker="Get in touch"
+  lead="Questions about membership, an event, or how to reach your chapter — send us a note and we will come back to you."
+>
+  <section class="section">
+    <div class="container contact">
+      <div class="card">
+        <h2>Send a message</h2>
+        <form data-contact-form novalidate>
+          <div class="field">
+            <label for="c-name">Your name</label>
+            <input id="c-name" name="name" type="text" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="c-email">Email</label>
+            <input id="c-email" name="email" type="email" required autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="c-subject">Subject</label>
+            <input id="c-subject" name="subject" type="text" required placeholder="Membership enquiry, event question…" />
+          </div>
+          <div class="field">
+            <label for="c-message">Message</label>
+            <textarea id="c-message" name="message" rows="6" required></textarea>
+          </div>
+          <p class="status" data-form-status hidden></p>
+          <button class="btn btn--primary" type="submit">Send message</button>
+        </form>
+        <p class="note">We usually reply within 24 to 48 hours.</p>
+      </div>
+
+      <aside class="side">
+        <section>
+          <h2>Direct</h2>
+          <p><a href={`mailto:${site.email}`}>{site.email}</a></p>
+          <p class="side__muted">
+            For assistance requests, please use the
+            <a href="/support/">support form</a> instead — it reaches the right
+            committee directly and stays confidential.
+          </p>
+        </section>
+
+        <section>
+          <h2>Community</h2>
+          <ul class="links">
+            <li><a href={site.social.facebook} rel="noopener">Facebook group</a></li>
+            <li><a href={site.social.whatsapp} rel="noopener">WhatsApp community</a></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Chapters</h2>
+          <p class="side__muted">
+            Each chapter has its own contact. <a href="/chapters/">Find yours</a>.
+          </p>
+        </section>
+      </aside>
+    </div>
+  </section>
+</PageLayout>
+
+<script>
+  import { wireContactForm } from '../lib/publicForms';
+  wireContactForm();
+</script>
+
+<style>
+  .contact {
+    display: grid;
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 52rem) {
+    .contact {
+      grid-template-columns: 1.5fr 1fr;
+      gap: var(--s-7);
+    }
+  }
+
+  .card h2 {
+    font-size: var(--t-xl);
+    margin-bottom: var(--s-5);
+  }
+
+  .field {
+    display: grid;
+    gap: var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+
+  label {
+    font-size: var(--t-sm);
+    font-weight: 500;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    padding: var(--s-3);
+    background: var(--cream);
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--t-sm);
+  }
+
+  input:hover,
+  textarea:hover {
+    border-color: var(--text-muted);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  .status {
+    margin-bottom: var(--s-4);
+    padding: var(--s-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--t-sm);
+  }
+
+  .status[data-tone='success'] {
+    background: #e7efe6;
+    color: #24452c;
+  }
+
+  .status[data-tone='error'] {
+    background: #f6e3dc;
+    color: #7a2c12;
+  }
+
+  .note {
+    margin-top: var(--s-4);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .side {
+    display: grid;
+    gap: var(--s-6);
+  }
+
+  .side h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
+
+  .side__muted {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+
+  .links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--s-2);
+    font-size: var(--t-sm);
+  }
+</style>

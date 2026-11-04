@@ -1,0 +1,302 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout
+  title="Administrators"
+  lead="Who has admin access. Admin identity is moving from a hardcoded email list to a custom claim; this page shows how far that migration has got."
+>
+  <section class="panel">
+    <h2>Your own token</h2>
+    <p class="panel__note">
+      What the server actually sees when you make a request. The legacy email
+      list in <code>firestore.rules</code> can only be removed once every
+      administrator below shows a claim.
+    </p>
+    <dl class="me" id="me"><div><dt>Loading…</dt><dd></dd></div></dl>
+  </section>
+
+  <section class="panel">
+    <h2>Administrators</h2>
+    <p class="status" data-roles-status hidden></p>
+    <div class="table-wrap">
+      <table class="roles">
+        <thead>
+          <tr>
+            <th scope="col">Email</th>
+            <th scope="col">Claim</th>
+            <th scope="col">Super</th>
+            <th scope="col">Granted by</th>
+          </tr>
+        </thead>
+        <tbody id="roles-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" data-super hidden>
+    <h2>Grant or revoke</h2>
+    <p class="panel__note">
+      The person must have signed in at least once, so that an account exists to
+      attach the claim to. Every change is recorded in the audit log.
+    </p>
+    <form id="grant-form" class="grant" novalidate>
+      <div class="field">
+        <label for="grant-email">Email address</label>
+        <input id="grant-email" type="email" required autocomplete="off" />
+      </div>
+      <label class="choice"><input type="checkbox" id="grant-admin" checked /><span>Administrator</span></label>
+      <label class="choice"><input type="checkbox" id="grant-super" /><span>Super administrator (can manage roles)</span></label>
+      <p class="status" data-grant-status hidden></p>
+      <div class="grant__actions">
+        <button class="btn btn--primary btn--sm" type="submit">Save role</button>
+        <button class="btn btn--danger btn--sm" type="button" id="revoke">Revoke all access</button>
+      </div>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  import { listAdminRoles, setAdminRole, whoAmI, readableError } from '../../lib/adminApi';
+
+  const rowsEl = document.getElementById('roles-rows')!;
+  const meEl = document.getElementById('me')!;
+
+  function say(selector: string, tone: 'success' | 'error' | 'info', message: string) {
+    const box = document.querySelector<HTMLElement>(selector);
+    if (!box) return;
+    box.hidden = false;
+    box.dataset.tone = tone;
+    box.textContent = message;
+  }
+
+  function fact(term: string, value: string, good?: boolean) {
+    const wrap = document.createElement('div');
+    const dt = document.createElement('dt');
+    dt.textContent = term;
+    const dd = document.createElement('dd');
+    dd.textContent = value;
+    if (good !== undefined) dd.className = good ? 'good' : 'bad';
+    wrap.append(dt, dd);
+    return wrap;
+  }
+
+  async function loadMe() {
+    try {
+      const me = await whoAmI();
+      meEl.replaceChildren(
+        fact('Signed in as', me.email ?? '—'),
+        fact('Email verified', me.emailVerified ? 'yes' : 'no', me.emailVerified),
+        fact('admin claim', me.claims.admin ? 'present' : 'missing', me.claims.admin),
+        fact('superAdmin claim', me.claims.superAdmin ? 'present' : 'missing'),
+        fact('On the legacy email list', me.onLegacyList ? 'yes' : 'no'),
+        fact(
+          'Ready for claims-only rules',
+          me.readyForClaimsOnly ? 'yes' : 'no — still relying on the email list',
+          me.readyForClaimsOnly,
+        ),
+      );
+      if (me.claims.superAdmin) {
+        document.querySelector<HTMLElement>('[data-super]')!.hidden = false;
+      }
+    } catch (error) {
+      meEl.replaceChildren(fact('Error', readableError(error), false));
+    }
+  }
+
+  async function loadRoles() {
+    say('[data-roles-status]', 'info', 'Loading…');
+    try {
+      const { roles, legacyEmails } = await listAdminRoles();
+      const withClaim = new Set(roles.filter((r) => r.admin).map((r) => (r.email ?? '').toLowerCase()));
+
+      rowsEl.replaceChildren();
+      const seen = new Set<string>();
+
+      for (const r of roles) {
+        seen.add((r.email ?? '').toLowerCase());
+        rowsEl.append(row(r.email ?? r.uid, r.admin, r.superAdmin, r.grantedBy ?? '—'));
+      }
+      // Anyone still only on the legacy list is the reason the email branch
+      // cannot be removed yet, so show them explicitly.
+      for (const email of legacyEmails) {
+        if (!seen.has(email.toLowerCase())) {
+          rowsEl.append(row(email, false, false, 'legacy list only'));
+        }
+      }
+
+      const outstanding = legacyEmails.filter((e) => !withClaim.has(e.toLowerCase())).length;
+      say(
+        '[data-roles-status]',
+        outstanding === 0 ? 'success' : 'info',
+        outstanding === 0
+          ? 'Every administrator has a claim. The legacy email list can now be removed from firestore.rules — see docs/RUNBOOK-admin-roles.md.'
+          : `${outstanding} administrator${outstanding === 1 ? '' : 's'} still on the legacy list only. The email branch in the rules must stay until each has signed in once.`,
+      );
+    } catch (error) {
+      say('[data-roles-status]', 'error', readableError(error));
+    }
+  }
+
+  function row(email: string, isAdmin: boolean, isSuper: boolean, by: string) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.textContent = email;
+    tr.append(th);
+
+    const claim = document.createElement('td');
+    claim.textContent = isAdmin ? 'yes' : 'no';
+    claim.className = isAdmin ? 'good' : 'bad';
+    tr.append(claim);
+
+    const sup = document.createElement('td');
+    sup.textContent = isSuper ? 'yes' : '—';
+    tr.append(sup);
+
+    const byTd = document.createElement('td');
+    byTd.textContent = by;
+    byTd.className = 'muted';
+    tr.append(byTd);
+    return tr;
+  }
+
+  async function save(admin: boolean, superAdmin: boolean) {
+    const email = (document.getElementById('grant-email') as HTMLInputElement).value.trim();
+    if (!email) {
+      say('[data-grant-status]', 'error', 'Enter an email address.');
+      return;
+    }
+    try {
+      await setAdminRole(email, { admin, superAdmin });
+      say(
+        '[data-grant-status]',
+        'success',
+        admin || superAdmin
+          ? `${email} now has access. They must sign out and back in for it to take effect.`
+          : `Access removed for ${email}.`,
+      );
+      await loadRoles();
+    } catch (error) {
+      say('[data-grant-status]', 'error', readableError(error));
+    }
+  }
+
+  document.getElementById('grant-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    save(
+      (document.getElementById('grant-admin') as HTMLInputElement).checked,
+      (document.getElementById('grant-super') as HTMLInputElement).checked,
+    );
+  });
+
+  document.getElementById('revoke')?.addEventListener('click', () => {
+    const email = (document.getElementById('grant-email') as HTMLInputElement).value.trim();
+    if (email && confirm(`Remove all administrator access for ${email}?`)) save(false, false);
+  });
+
+  window.addEventListener(
+    'admin:ready',
+    () => {
+      loadMe();
+      loadRoles();
+    },
+    { once: true },
+  );
+</script>
+
+<style>
+  .panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--s-5);
+    margin-bottom: var(--s-5);
+  }
+
+  .panel h2 {
+    font-size: var(--t-lg);
+    margin-bottom: var(--s-2);
+  }
+
+  .panel__note {
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--s-4);
+    max-width: 62ch;
+  }
+
+  .me {
+    display: grid;
+    gap: var(--s-3) var(--s-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  }
+
+  .me dt {
+    font-size: var(--t-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .me dd {
+    margin: 2px 0 0;
+    font-size: var(--t-sm);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .roles {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--t-sm);
+    min-width: 34rem;
+  }
+
+  .roles th,
+  .roles td {
+    text-align: left;
+    padding: var(--s-3);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .roles thead th {
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .roles tbody th {
+    font-family: var(--font-sans);
+    font-weight: 400;
+    overflow-wrap: anywhere;
+  }
+
+  .grant {
+    max-width: 34rem;
+  }
+
+  .grant__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-4);
+  }
+
+  :global(.good) {
+    color: #275235;
+  }
+
+  :global(.bad) {
+    color: #8f3419;
+  }
+
+  :global(.muted) {
+    color: var(--text-muted);
+  }
+</style>

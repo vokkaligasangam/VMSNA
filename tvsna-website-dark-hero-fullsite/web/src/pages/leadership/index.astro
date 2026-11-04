@@ -1,0 +1,107 @@
+---
+import { getCollection } from 'astro:content';
+import PageLayout from '../../layouts/PageLayout.astro';
+import OfficerCard from '../../components/leadership/OfficerCard.astro';
+
+const all = (await getCollection('officers')).filter((o) => o.data.current);
+const term = all.find((o) => o.data.term)?.data.term;
+
+const tiers = [
+  {
+    key: 'executive',
+    label: 'Executive board',
+    blurb: 'The elected officers and members at large who run VMSNA day to day.',
+  },
+  {
+    key: 'office-bearer',
+    label: 'Directors',
+    blurb: 'Appointed roles supporting the board.',
+  },
+  {
+    key: 'committee-chair',
+    label: 'Committee chairs',
+    blurb: null,
+  },
+  {
+    key: 'chapter-lead',
+    label: 'Chapter leads',
+    blurb: null,
+  },
+  {
+    key: 'advisor',
+    label: 'Executive advisory committee',
+    blurb: 'Long-standing members the board turns to for counsel.',
+  },
+] as const;
+
+const grouped = tiers
+  .map((t) => ({
+    ...t,
+    people: all
+      .filter((o) => o.data.tier === t.key)
+      .sort((a, b) => a.data.order - b.data.order),
+  }))
+  .filter((g) => g.people.length > 0);
+
+const total = all.length;
+---
+
+<PageLayout
+  title="Our leadership"
+  kicker={term ? `Term ${term}` : 'Leadership'}
+  lead={`The ${total} volunteers who run VMSNA — every one of them alongside a full-time job and a family.`}
+>
+  <section class="section">
+    <div class="container">
+      {
+        grouped.map((group) => (
+          <section class="tier">
+            <div class="tier__head">
+              <h2>{group.label}</h2>
+              {group.blurb && <p class="tier__blurb">{group.blurb}</p>}
+            </div>
+            <div class="grid grid--auto">
+              {group.people.map((o) => (
+                <OfficerCard officer={o} featured={group.key === 'executive'} />
+              ))}
+            </div>
+          </section>
+        ))
+      }
+
+      <p class="foot">
+        Elections are held each term and any member may stand.
+        <a href="/contact/"> Get in touch</a> if you would like to help.
+      </p>
+    </div>
+  </section>
+</PageLayout>
+
+<style>
+  .tier + .tier {
+    margin-top: var(--s-8);
+  }
+
+  .tier__head {
+    margin-bottom: var(--s-5);
+  }
+
+  .tier__head h2 {
+    font-size: var(--t-xl);
+  }
+
+  .tier__blurb {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+    max-width: 56ch;
+  }
+
+  .foot {
+    margin-top: var(--s-8);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--line);
+    font-size: var(--t-sm);
+    color: var(--text-muted);
+  }
+</style>

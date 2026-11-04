@@ -65,5 +65,16 @@ node_modules/
 # dotenv environment variables file
 .env
 
+# Service account keys — never commit these
+*firebase-adminsdk*.json
+serviceAccountKey*.json
+
+# Office lock files
+~$*
+
 # dataconnect generated files
 .dataconnect
+
+# Astro
+web/dist/
+web/.astro/
