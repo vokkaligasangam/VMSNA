@@ -21,7 +21,7 @@ const chapters = (await getCollection('chapters')).sort(
 );
 
 const fmt = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 ---
 
 <BaseLayout

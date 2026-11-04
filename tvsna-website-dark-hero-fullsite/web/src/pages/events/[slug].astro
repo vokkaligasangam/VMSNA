@@ -15,7 +15,7 @@ const { Content } = await render(event);
 
 const isPast = (d.end ?? d.start) < new Date();
 const fmt = (date: Date) =>
-  date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 const jsonLd = {
   '@context': 'https://schema.org',

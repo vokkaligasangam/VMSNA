@@ -13,7 +13,7 @@ const d = album.data;
 const { Content } = await render(album);
 
 const fmt = (date: Date) =>
-  date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  date.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 ---
 
 <BaseLayout title={d.title} description={d.summary}>

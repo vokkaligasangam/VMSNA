@@ -26,7 +26,7 @@ const memberOnes = sorted.filter((r) => r.data.visibility === 'members');
 
 const categories = [...new Set(memberOnes.map((r) => r.data.category))];
 
-const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 ---
 
 <PageLayout

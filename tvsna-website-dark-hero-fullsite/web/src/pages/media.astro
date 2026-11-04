@@ -9,7 +9,7 @@ const albums = (await getCollection('albums'))
 
 const publicAlbums = albums;
 
-const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 ---
 
 <PageLayout

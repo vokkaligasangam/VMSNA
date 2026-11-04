@@ -18,14 +18,16 @@ const past = published
   .filter((e) => (e.data.end ?? e.data.start) < now)
   .sort((a, b) => b.data.start.getTime() - a.data.start.getTime());
 
+// Frontmatter dates are calendar dates parsed as UTC midnight; format them in
+// UTC or a build machine west of Greenwich shows the day before.
 const range = (e: (typeof published)[number]) => {
-  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
   if (!e.data.end) return e.data.start.toLocaleDateString('en-US', opts);
   const sameMonth =
-    e.data.start.getMonth() === e.data.end.getMonth() &&
-    e.data.start.getFullYear() === e.data.end.getFullYear();
+    e.data.start.getUTCMonth() === e.data.end.getUTCMonth() &&
+    e.data.start.getUTCFullYear() === e.data.end.getUTCFullYear();
   return sameMonth
-    ? `${e.data.start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}–${e.data.end.toLocaleDateString('en-US', { day: 'numeric', year: 'numeric' })}`
+    ? `${e.data.start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}–${e.data.end.getUTCDate()}, ${e.data.end.getUTCFullYear()}`
     : `${e.data.start.toLocaleDateString('en-US', opts)} – ${e.data.end.toLocaleDateString('en-US', opts)}`;
 };
 ---
